@@ -2,12 +2,11 @@
 import os
 import sys
 from pathlib import Path
-
-import pytest
 from unittest.mock import MagicMock
 
-from sql_ai.athena.table import Table
+import pytest
 
+from sql_ai.athena.table import Table
 
 # Add `src/` and `tests/` to sys.path if not already present
 BASE_DIR = Path(__file__).resolve().parent.parent

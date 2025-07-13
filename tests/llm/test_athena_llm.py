@@ -1,16 +1,20 @@
 from unittest.mock import patch
+
+from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-from sql_ai.athena.athena_llm import AthenaLLM
 
 
 def test_athena_llm_instantiation(instantiate_clients):
     athena_client, bedrock_client = instantiate_clients
 
     test_table = Table(
-        name="station_lookup", description="test", catalog=None, database="default"
+        name="station_lookup",
+        description="test",
+        catalog=None,
+        database="default",
     )
 
     llm = AthenaLLM(

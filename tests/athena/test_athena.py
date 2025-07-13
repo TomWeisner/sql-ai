@@ -1,33 +1,15 @@
-"""test athena running of queries"""
-
-import boto3
-import pytest
-
-from sql_ai.athena.utils import (
-    fetch_athena_results,
-    run_query,
-)
-from sql_ai.utils.utils import find_aws_profile_by_account_id
+from sql_ai.athena.utils import fetch_athena_results, run_query
 
 
-def instantiate_client():
-    session = boto3.Session(profile_name=find_aws_profile_by_account_id("382901073838"))
-    athena_client = session.client("athena", region_name="eu-west-2")
-    return athena_client
-
-
-@pytest.mark.local_only
-def test_fetch_athena_results_select_star():
-    limit = 10
-    query = f"SELECT * FROM station_lookup limit {limit}"
+def test_fetch_athena_results_select_star(mock_athena_client):
     rows = fetch_athena_results(
-        query=query,
-        client=instantiate_client(),
+        query="SELECT * FROM station_lookup LIMIT 10",
+        client=mock_athena_client,
         database="default",
         catalog="AwsDataCatalog",
     )
-    assert len(rows) == limit + 1  # for column name row
-    assert len(rows[0]) == 4
+
+    assert len(rows) == 11  # 1 header + 10 rows
     assert rows[0] == [
         "station_name",
         "three_alpha",
@@ -36,19 +18,16 @@ def test_fetch_athena_results_select_star():
     ]
 
 
-@pytest.mark.local_only
-def test_run_query():
-    limit = 10
-    query = f"SELECT * FROM station_lookup limit {limit}"
+def test_run_query(mock_athena_client):
     df = run_query(
-        query=query,
-        client=instantiate_client(),
+        query="SELECT * FROM station_lookup LIMIT 10",
+        client=mock_athena_client,
         database="default",
         catalog="AwsDataCatalog",
     )
-    assert df.shape[0] == limit
-    assert df.shape[1] == 4
-    assert df.columns.to_list() == [
+
+    assert df.shape == (10, 4)
+    assert df.columns.tolist() == [
         "station_name",
         "three_alpha",
         "station_nlc",

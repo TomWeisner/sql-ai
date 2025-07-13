@@ -42,7 +42,7 @@ def fetch_athena_results(
     client: AthenaClient,
     query: str,
     limit: Optional[int] = None,
-    database: str = "",
+    database: str = "default",
     catalog: str = "awsdatacatalog",
     output_bucket: str = "",
     aws_profile: str = "",
@@ -65,6 +65,9 @@ def fetch_athena_results(
         query += f" LIMIT {limit}"
 
     output_path = f"s3://{output_bucket}/"
+
+    print(output_path)
+    print(query)
 
     response = client.start_query_execution(
         QueryString=query,
@@ -125,16 +128,24 @@ def fetch_athena_results(
 
 @track_step_and_log(lambda table_name, **_: f"Table: {table_name}")
 def show_create_table(
-    table_name: str, database: str, catalog: str, athena_client: AthenaClient
+    table_name: str,
+    database: str,
+    catalog: str,
+    athena_client: AthenaClient,
+    output_bucket: str,
 ) -> str:
     query = f"SHOW CREATE TABLE {table_name}"
     rows = fetch_athena_results(
-        query=query, client=athena_client, database=database, catalog=catalog
+        query=query,
+        client=athena_client,
+        database=database,
+        catalog=catalog,
+        output_bucket=output_bucket,
     )
     return "\n".join(row[0] or "" for row in rows[1:])
 
 
-def get_schema_from_athena(athena_client: AthenaClient, table: Table):
+def get_schema_from_athena(athena_client: AthenaClient, table: Table, output_bucket: str):
     """Extract raw DDL from Athena, excluding metadata that does
     not facilitate SQL generation."""
     if table.name is None:
@@ -149,6 +160,7 @@ def get_schema_from_athena(athena_client: AthenaClient, table: Table):
         database=table.database,
         catalog=table.catalog,
         athena_client=athena_client,
+        output_bucket=output_bucket,
     )
     uninteresting_properties = [
         "CLUSTERED_BY",
@@ -176,11 +188,13 @@ def get_schema_from_athena(athena_client: AthenaClient, table: Table):
 def run_query(
     query: str,
     limit: Optional[int] = None,
-    database: str = "",
+    database: str = "default",
     catalog: str = "awsdatacatalog",
     client: Any = None,
     output_bucket: str = "",
 ) -> pd.DataFrame:
+    print(456, database, catalog, query, client, output_bucket)
+
     rows = fetch_athena_results(
         query=query,
         limit=limit,

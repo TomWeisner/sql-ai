@@ -50,16 +50,17 @@ Guidelines:
 
 class SQLPrompt(ABC):
 
-    def __init__(self, bedrock_runtime_client=None):
-        self.bedrock_runtime_client = bedrock_runtime_client
+    def __init__(self):
         self.formatter = SQLFormatting()
 
     def generate_sql(
-        self, user_question, tables: list[Table]
+        self, user_question, tables: list[Table], bedrock_runtime_client
     ) -> tuple[str, dict, list[str], str]:
 
         if len(tables) == 0:
             return "No tables found - unable to generate query.", {}, [], ""
+
+        self.bedrock_runtime_client = bedrock_runtime_client
 
         tables = tables.copy()  # dont overwrite originals
 

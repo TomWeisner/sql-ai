@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional
 
 import boto3
 import pandas as pd
@@ -15,43 +15,33 @@ from sql_ai.bedrock.utils import (
     wrap_message_in_body,
 )
 from sql_ai.streamlit.utils import track_step_and_log
-from sql_ai.utils.utils import find_aws_profile_by_account_id
+from sql_ai.streamlit.config_dataclass import Config
 
 
 class AthenaLLM:
     def __init__(
         self,
-        tables: list[Table],
-        athena_client: Any = None,
-        bedrock_runtime_client: Any = None,
-        athena_output_bucket: str = "",
-        model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0",
-        max_tokens: int = 2000,
-        sql_prompt=None,
+        config: Config,
+        tables: list[Table] = [],
+        sql_prompt: Optional[SQLPrompt] = None,
     ):
-        self.athena_client = athena_client
-        self.bedrock_runtime_client = bedrock_runtime_client
         self.tables = tables
-        self.athena_output_bucket = athena_output_bucket
-        self.model_id = model_id
-        self.max_tokens = max_tokens
-        self.max_sql_generation_retries = 3
         self.sql_prompt = sql_prompt
+        self.max_sql_generation_retries = 3
 
-        if not self.athena_client:
-            session = boto3.Session(
-                profile_name=find_aws_profile_by_account_id("382901073838")
-            )
-            self.athena_client = session.client(
-                "athena", region_name="eu-west-2"
-            )  # type: ignore
-        if not self.bedrock_runtime_client:
-            session = boto3.Session(
-                profile_name=find_aws_profile_by_account_id("382901073838")
-            )
-            self.bedrock_runtime_client = session.client(
-                "bedrock-runtime-runtime", region_name="eu-west-2"
-            )  # type: ignore
+        session = boto3.Session(profile_name=config.aws_profile)
+        self.athena_client = session.client(
+            "athena", region_name=config.aws_region
+        )  # type: ignore
+        self.bedrock_runtime_client = session.client(
+            "bedrock-runtime", region_name=config.aws_region
+        )  # type: ignore
+        self.aws_bedrock_model_id = config.aws_bedrock_model_id
+        self.aws_bedrock_model_version = config.aws_bedrock_model_version
+        self.max_tokens = config.max_tokens
+        self.temperature = config.temperature
+        self.aws_athena_output_bucket = config.aws_athena_output_bucket
+
         assert (
             self.max_tokens > 0 and self.max_tokens <= 10000
         ), "max_tokens must be between 1 and 10000"
@@ -88,7 +78,11 @@ class AthenaLLM:
         return sql, prompt, format_logs, error_traceback
 
     def run_athena_query(self, query: str) -> pd.DataFrame:
-        return run_query(query=query, client=self.athena_client)
+        return run_query(
+            query=query,
+            client=self.athena_client,
+            output_bucket=self.aws_athena_output_bucket,
+        )
 
     def dataframe_to_prompt(self, data: pd.DataFrame) -> str:
         return data_to_prompt(data=data)
@@ -116,7 +110,7 @@ class AthenaLLM:
         answer = call_model_direct(
             body=body_prompt,
             bedrock_runtime_client=self.bedrock_runtime_client,
-            model_id=self.model_id,
+            model_id=self.aws_bedrock_model_id,
         )
         return answer, body_prompt
 
@@ -163,7 +157,9 @@ class AthenaLLM:
     def _get_schemas_for_tables(self):
         for table in self.tables:
             table.schema = get_schema_from_athena(
-                athena_client=self.athena_client, table=table
+                athena_client=self.athena_client,
+                table=table,
+                output_bucket=self.aws_athena_output_bucket,
             )
 
     @track_step_and_log(
@@ -175,7 +171,9 @@ class AthenaLLM:
     ) -> tuple[str, dict, list[str], str, bool]:
         print("Generating SQL from input:", f'"{user_question}"')
         sql, prompt, format_logs, error_traceback = self.sql_prompt.generate_sql(
-            user_question=user_question, tables=self.tables
+            user_question=user_question,
+            tables=self.tables,
+            bedrock_runtime_client=self.bedrock_runtime_client,
         )
         is_valid_sql, reason = self.ensure_is_valid_sql(sql)
         return sql, prompt, format_logs, error_traceback, is_valid_sql

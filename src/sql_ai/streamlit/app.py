@@ -4,7 +4,7 @@ Streamlit app for running a chatbot with Bedrock.
 This app uses our Athena LLM class to generate SQL queries.
 
 Run the app with the below from the project root:
-streamlit run src/sql_ai./bedrock/streamlit/app_athena.py
+streamlit run src/sql_ai/streamlit/app.py
 """
 
 from datetime import datetime
@@ -12,7 +12,7 @@ from datetime import datetime
 import streamlit as st
 
 from sql_ai.athena.athena_llm import AthenaLLM
-from sql_ai.streamlit.cem_timetable import CEMTimetableLLM
+
 from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
     set_title_top_padding,
@@ -24,6 +24,7 @@ from sql_ai.streamlit.utils import (
     track_step_and_log,
     track_step_and_log_cm,
 )
+from sql_ai.streamlit.pixar_films import PixarLLM
 
 
 class ChatbotApp:
@@ -56,6 +57,7 @@ class ChatbotApp:
             st.session_state.setdefault(k, v)
 
     def run(self):
+        print("Running app...")
         set_sidebar_width_and_center_content(sidebar_width=450, max_content_width=1100)
         set_title_top_padding(rem=0)
         st.sidebar.title("🧭 Steps taken")
@@ -245,14 +247,13 @@ class ChatbotApp:
 
 
 if __name__ == "__main__":
-    question = (
-        "on avg over the last week, how many trains per day pass through peterborough?"
-    )
+    question = "avg length of film?"
 
     CB = ChatbotApp(
-        CEMTimetableLLM,
-        title="CEM Timetable",
+        athena_llm=PixarLLM,
+        title="Pixar",
         default_question=question,
     )
+    print(123)
 
     CB.run()

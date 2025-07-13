@@ -1,5 +1,6 @@
-import pandas as pd
 import json
+
+import pandas as pd
 
 from sql_ai.streamlit.utils import track_step_and_log
 

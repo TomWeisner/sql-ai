@@ -1,6 +1,7 @@
 import re
-from typing import Optional, Any
 import time
+from typing import Any, Optional
+
 import boto3
 import pandas as pd
 from mypy_boto3_athena import AthenaClient

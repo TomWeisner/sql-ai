@@ -188,8 +188,8 @@ class AthenaLLM:
             query = ""
         else:
             query = (
-                "\nBased on the following query (which you shouldn't share in ",
-                f"the output): {query}\n",
+                "\nBased on the following query (which you shouldn't share in "
+                f"the output): {query}\n"
             )
 
         prompt = f"""

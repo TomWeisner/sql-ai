@@ -96,8 +96,8 @@ class SQLCleaning(ABC):
         for i, line in enumerate(unique_lines):
             if line_counts[line] > 1:
                 mutli_msg = (
-                    f"{indent}{string.ascii_letters[i]}. {line} ",
-                    f"(applied x{line_counts[line]} times)",
+                    f"{indent}{string.ascii_letters[i]}. {line} "
+                    f"(applied x{line_counts[line]} times)"
                 )
                 body_lines.append(mutli_msg)
             else:

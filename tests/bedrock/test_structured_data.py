@@ -15,8 +15,7 @@ def instantiate_clients():
 
 
 test_table_description = (
-    "A lookup table for stations showing their names, ",
-    "abbrevations and NLC codes",
+    "A lookup table for stations showing their names, abbrevations and NLC codes"
 )
 
 test_table = Table(

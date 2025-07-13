@@ -50,8 +50,7 @@ class SQLFormatting:
         and add it to the list of tables if found"""
         if '"information_schema"."columns"' in sql:
             description = (
-                "Metadata about columns in tables. ",
-                "Note metadata is not a real catalog.",
+                "Metadata about columns in tables. Note metadata is not a real catalog."
             )
             metadata_table = Table(
                 database="information_schema",

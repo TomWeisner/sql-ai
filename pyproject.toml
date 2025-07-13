@@ -1,0 +1,75 @@
+[project]
+name = "sql-ai"
+version = "0.0.1"
+description = "Repo for converting natural language to SQL via a front end chatbot"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Tom Weisner", email = "tomweisner@hotmail.com" }]
+requires-python = ">=3.10"
+
+dependencies = [
+  "streamlit>=1.45.1",
+  "boto3>=1.38.31,<2.0.0",
+  "pandas>=2.3.0",
+  "pyyaml>=6.0.2",
+  "sqlglot>=26.31.0",
+  "python-docx>=1.2.0",
+  "boto3-stubs[athena]>=1.39.3"
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+packages = [
+  { include = "sql_ai", from = "src" }
+]
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.2.0"
+streamlit = "^1.46.1"
+types-pyyaml = "^6.0.12.20250516"
+nox = "^2025.5.1"
+nox-poetry = "^1.0"
+
+[tool.poetry.group.test.dependencies]
+nox-poetry = "^1.0"
+pytest = "^8.0"
+pytest-cov = "^4.0"
+
+
+[tool.poetry.group.typing.dependencies]
+black = "^24.4.1"
+flake8 = "^7.0.0"
+mypy = ">=1.10.0"
+pandas-stubs = "^2.2.2"
+types-pyyaml = "^6.0.12"
+boto3-stubs = "^1.38.38"
+streamlit = "^1.46.1"
+
+[tool.mypy]
+files = ["src/sql_ai", "tests"]
+mypy_path = ["src"]
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = ["lner_package_template.*"]
+ignore_missing_imports = true
+
+[tool.mypy-streamlit]
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+src_paths = ["src", "tests"]
+
+[tool.black]
+line-length = 80
+target-version = ["py310"]
+include = "\\.pyi?$"
+
+[tool.pytest.ini_options]
+markers = [
+  "local_only: mark tests that should only run when on local machine"
+]

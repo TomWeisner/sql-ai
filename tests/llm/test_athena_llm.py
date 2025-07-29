@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting import (
@@ -8,7 +8,33 @@ from sql_ai.athena.table import Table
 from sql_ai.streamlit.config_dataclass import Config
 
 
-def test_athena_llm_instantiation():
+@patch("sql_ai.streamlit.config_dataclass.find_aws_profile_by_account_id")
+@patch("boto3.Session")
+def test_athena_llm_instantiation(mock_boto_session, mock_find_profile):
+    mock_find_profile.return_value = "test_profile"
+
+    # Mock athena client
+    mock_athena_client = MagicMock()
+    mock_athena_client.meta.service_model.service_name = "athena"
+
+    # Mock bedrock client (could be more specific if needed)
+    mock_bedrock_client = MagicMock()
+    mock_bedrock_client.meta.service_model.service_name = "bedrock-runtime"
+
+    # Configure .client() to return different mocks based on service name
+    def client_side_effect(service_name, region_name=None):
+        if service_name == "athena":
+            return mock_athena_client
+        elif service_name == "bedrock-runtime":
+            return mock_bedrock_client
+        else:
+            raise ValueError(f"Unexpected service name: {service_name}")
+
+    # Set up mock boto session
+    mock_session = MagicMock()
+    mock_session.client.side_effect = client_side_effect
+    mock_boto_session.return_value = mock_session
+
     test_table = Table(
         name="station_lookup",
         description="test",
@@ -16,7 +42,10 @@ def test_athena_llm_instantiation():
         database="default",
     )
 
-    llm = AthenaLLM(tables=[test_table], config=Config())
+    test_config = Config()
+    assert test_config.aws_profile == "test_profile"
+
+    llm = AthenaLLM(tables=[test_table], config=test_config)
 
     assert llm.tables[0].name == "station_lookup"
     assert llm.tables[0].catalog == "awsdatacatalog"

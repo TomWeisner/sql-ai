@@ -6,10 +6,10 @@ from sql_ai.athena.sql_prompting import (
 )
 from sql_ai.athena.table import Table
 
+from sql_ai.streamlit.config_dataclass import Config
 
-def test_athena_llm_instantiation(instantiate_clients):
-    athena_client, bedrock_client = instantiate_clients
 
+def test_athena_llm_instantiation():
     test_table = Table(
         name="station_lookup",
         description="test",
@@ -17,23 +17,14 @@ def test_athena_llm_instantiation(instantiate_clients):
         database="default",
     )
 
-    llm = AthenaLLM(
-        tables=[test_table],
-        athena_client=athena_client,
-        bedrock_runtime_client=bedrock_client,
-    )
+    llm = AthenaLLM(tables=[test_table], config=Config())
 
     assert llm.tables[0].name == "station_lookup"
     assert llm.tables[0].catalog == "awsdatacatalog"
     assert len(llm.tables) == 1
-    assert llm.athena_client is athena_client
-    assert llm.bedrock_runtime_client is bedrock_client
     assert llm.max_tokens == 2000
-
-
-def instantiate_sql_prompt(mock_bedrock_client):
-    sql_prompt = SQLPrompt(bedrock_runtime_client=mock_bedrock_client)
-    return sql_prompt
+    assert llm.athena_client.meta.service_model.service_name == "athena"
+    assert llm.bedrock_runtime_client.meta.service_model.service_name == "bedrock-runtime"
 
 
 def test_no_tables_supplied(mock_bedrock_client):
@@ -41,9 +32,10 @@ def test_no_tables_supplied(mock_bedrock_client):
     Tests that if no tables are supplied to generate_prompt_sql, it will only
     return a message indicating that no tables are found.
     """
-    sql_prompt = instantiate_sql_prompt(mock_bedrock_client)
-    query, prompt, format_logs, error_trace = sql_prompt.generate_sql(
-        user_question="What is the average price of a car?", tables=[]
+    query, prompt, format_logs, error_trace = SQLPrompt().generate_sql(
+        user_question="What is the average price of a car?",
+        tables=[],
+        bedrock_runtime_client=mock_bedrock_client,
     )
     assert query == "No tables found - unable to generate query."
     assert not prompt
@@ -66,7 +58,7 @@ def test_one_table_supplied(mock_call_model_direct, mock_bedrock_client):
         catalog="AwsDataCatalog",
         database="default",
     )
-    sql_prompt = instantiate_sql_prompt(mock_bedrock_client)
+    sql_prompt = SQLPrompt()
 
     query, prompt, format_logs, error_trace = sql_prompt.generate_sql(
         user_question="What is the average price of a car?", tables=[table]
@@ -95,7 +87,7 @@ def test_one_table_supplied_custom_schema(mock_call_model_direct, mock_bedrock_c
         database="default",
         schema={"cost": "float", "model": "string"},
     )
-    sql_prompt = instantiate_sql_prompt(mock_bedrock_client)
+    sql_prompt = SQLPrompt()
 
     query, prompt, format_logs, error_trace = sql_prompt.generate_sql(
         user_question="What is the average price of a car?", tables=[table]

@@ -6,7 +6,7 @@ from sql_ai.utils.utils import find_aws_profile_by_account_id
 
 @dataclass
 class Config:
-    aws_account_id: Optional[str] = None
+    aws_account_id: Optional[str] = "688357424058"
     aws_profile: Optional[str] = None
     aws_region: Optional[str] = "eu-west-2"
     aws_athena_output_bucket: Optional[str] = None

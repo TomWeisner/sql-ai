@@ -193,7 +193,6 @@ def run_query(
     client: Any = None,
     output_bucket: str = "",
 ) -> pd.DataFrame:
-    print(456, database, catalog, query, client, output_bucket)
 
     rows = fetch_athena_results(
         query=query,

@@ -5,9 +5,11 @@ from sql_ai.athena.sql_prompting import (
 from sql_ai.athena.table import Table
 from sql_ai.streamlit.config_dataclass import Config
 
-
 pixar_films_table = Table(
-    name="films", description=("Films"), catalog="awsdatacatalog", database="pixar"
+    name="films",
+    description=("Films"),
+    catalog="awsdatacatalog",
+    database="pixar",
 )
 
 custom_guidelines = """
@@ -34,5 +36,7 @@ PixarConfig = Config(
 )
 
 PixarLLM = AthenaLLM(
-    tables=[pixar_films_table], sql_prompt=PixarFilmsPrompt(), config=PixarConfig
+    tables=[pixar_films_table],
+    sql_prompt=PixarFilmsPrompt(),
+    config=PixarConfig,
 )

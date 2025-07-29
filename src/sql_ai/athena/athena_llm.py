@@ -14,8 +14,8 @@ from sql_ai.bedrock.utils import (
     data_to_prompt,
     wrap_message_in_body,
 )
-from sql_ai.streamlit.utils import track_step_and_log
 from sql_ai.streamlit.config_dataclass import Config
+from sql_ai.streamlit.utils import track_step_and_log
 
 
 class AthenaLLM:
@@ -46,9 +46,7 @@ class AthenaLLM:
             self.max_tokens > 0 and self.max_tokens <= 10000
         ), "max_tokens must be between 1 and 10000"
         if self.sql_prompt is None:
-            self.sql_prompt = SQLPrompt(
-                bedrock_runtime_client=self.bedrock_runtime_client
-            )
+            self.sql_prompt = SQLPrompt()
 
     @track_step_and_log("sql_question")
     def sql_question(

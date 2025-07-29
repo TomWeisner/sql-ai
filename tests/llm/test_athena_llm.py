@@ -5,7 +5,6 @@ from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-
 from sql_ai.streamlit.config_dataclass import Config
 
 
@@ -61,7 +60,9 @@ def test_one_table_supplied(mock_call_model_direct, mock_bedrock_client):
     sql_prompt = SQLPrompt()
 
     query, prompt, format_logs, error_trace = sql_prompt.generate_sql(
-        user_question="What is the average price of a car?", tables=[table]
+        user_question="What is the average price of a car?",
+        tables=[table],
+        bedrock_runtime_client=mock_bedrock_client,
     )
     assert 'FROM "AwsDataCatalog"."default"."cars" as "c"'.lower() in query.lower()
     assert '"price"'.lower() in query.lower()
@@ -90,7 +91,9 @@ def test_one_table_supplied_custom_schema(mock_call_model_direct, mock_bedrock_c
     sql_prompt = SQLPrompt()
 
     query, prompt, format_logs, error_trace = sql_prompt.generate_sql(
-        user_question="What is the average price of a car?", tables=[table]
+        user_question="What is the average price of a car?",
+        tables=[table],
+        bedrock_runtime_client=mock_bedrock_client,
     )
 
     assert 'FROM "AwsDataCatalog"."default"."cars" as "c"'.lower() in query.lower()

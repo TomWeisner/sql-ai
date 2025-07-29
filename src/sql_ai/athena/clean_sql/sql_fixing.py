@@ -422,7 +422,16 @@ class SQLAthena(SQLCleaning):
     def _clean_date_sub(self, *args) -> tuple[str, Callable]:
         """DATE_SUB(date, <expr with number>) -> DATE_ADD('day', -1 * number, date)"""
         pattern = (
-            r"DATE_SUB\(\s*(?P<date>[^,]+?)\s*,\s*(?P<expr>.+?(?P<number>\d+).+?)\s*\)"
+            r"DATE_SUB\("  # Match 'DATE_SUB(' literal
+            r"\s*"  # Optional whitespace after opening parenthesis
+            r"(?P<date>[^,]+?)"  # Capture group 'date': anything up to the comma
+            r"\s*,\s*"  # Comma surrounded by optional whitespace
+            r"(?P<expr>"  # Capture group 'expr': begins here
+            r".+?"  # Any characters (e.g., INTERVAL keyword)
+            r"(?P<number>\d+)"  # Capture group 'number': one or more digits
+            r".+?"  # More characters (e.g., DAY)
+            r")"  # End of 'expr' group
+            r"\s*\)"  # Optional whitespace and closing parenthesis
         )
 
         def replacer(match: re.Match) -> tuple[str, str]:

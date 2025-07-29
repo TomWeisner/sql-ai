@@ -157,9 +157,8 @@ class SQLStandards(SQLCleaning):
             new_line = "\n"
             if m.start() == 0:
                 new_line = ""
-            after = (
-                f"{new_line}{' ' * clause_keyword_spacing[keyword]}{keyword} {content}"
-            )
+            num_spaces = clause_keyword_spacing[keyword]
+            after = f"{new_line}{' ' * num_spaces}{keyword} {content}"
             after_display = f"{clause_keyword_spacing[keyword]} spaces"
             return keyword, [after, after_display]
 

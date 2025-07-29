@@ -26,7 +26,7 @@ class AthenaLLM:
         sql_prompt: Optional[SQLPrompt] = None,
     ):
         self.tables = tables
-        self.sql_prompt = sql_prompt
+        self.sql_prompt = sql_prompt or SQLPrompt()
         self.max_sql_generation_retries = 3
 
         session = boto3.Session(profile_name=config.aws_profile)
@@ -45,8 +45,6 @@ class AthenaLLM:
         assert (
             self.max_tokens > 0 and self.max_tokens <= 10000
         ), "max_tokens must be between 1 and 10000"
-        if self.sql_prompt is None:
-            self.sql_prompt = SQLPrompt()
 
     @track_step_and_log("sql_question")
     def sql_question(

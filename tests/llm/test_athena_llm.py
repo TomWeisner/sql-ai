@@ -1,4 +1,4 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting import (
@@ -17,7 +17,7 @@ def test_athena_llm_instantiation(mock_boto_session, mock_find_profile):
     mock_athena_client = MagicMock()
     mock_athena_client.meta.service_model.service_name = "athena"
 
-    # Mock bedrock client (could be more specific if needed)
+    # Mock bedrock client
     mock_bedrock_client = MagicMock()
     mock_bedrock_client.meta.service_model.service_name = "bedrock-runtime"
 

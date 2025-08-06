@@ -253,6 +253,5 @@ if __name__ == "__main__":
         title="Pixar",
         default_question=question,
     )
-    print(123)
 
     CB.run()

@@ -1,10 +1,10 @@
 # sql-ai
 
-Repository to generate SQL from natual langauge, with a front end chat bot UI for supplying questions!
+Repository to generate SQL from natual langauge, with a front end chat bot for supplying questions.
 
-## Instructions to Run
+## How to use/update the repo
 
-This code uses Poetry to manage dependencies/venvs/execution.
+This project uses Poetry to manage dependencies/venvs/execution.
 
 1. `sudo apt install python3-poetry`   # If poetry not installed on system
 2. `poetry config virtualenvs.in-project true`  # Create a .venv/ folder inside the project
@@ -15,9 +15,7 @@ This code uses Poetry to manage dependencies/venvs/execution.
 7. `poetry lock`  # Optional, update the lock file with new package versions
 8. `source .venv/bin/activate`  # Optional
 9. `poetry self add poetry-plugin-export`  # Installs a plugin needed by `noxfile.py`
-1-. Before pushing new code it is recommended to check code is formatted and tests pass. This can be achieved with Nox. See section below.
-
-### Using Nox
+10. Before pushing new code it is recommended to check code is formatted and tests pass. This can be achieved with Nox...
 
 `noxfile.py` defines multiple 'sessions' that perform actions such as linting and running tests.
 
@@ -27,3 +25,49 @@ All sessions can be run together with `nox`
 
 It is recommended to run `nox` successfully before pushing.
 
+## How to run the chatbot
+
+First, set up venv and intall requirements. See section above.
+
+Then, in a terminal make your working directory the root of the project and run:
+
+`streamlit run src/sql/_ai/streamlit/app.py`
+
+
+# Athena
+
+The `src/sql_ai/athena` directory is concerned with running LLMs on structured data stored in Athena databases
+
+The AthenaLLM class handles input questions to return an Athena compliant query
+
+It beings by building a prompt from the:
+1. input question
+2. schema of tables supplied to the chatbot (which can include the official data defintion Comments related to Athena columns and overall tables)
+
+The Bedrock model in use is then called to generate a SQL query.
+
+The generated SQL query is passed through various Formatting steps:
+- Fixing (making Athena compliant)
+- Standardising (prettifying with standard spacings etc.)
+
+This SQL is then ran on Athena.
+
+Assuming successful return of an answer, the AthenaLLM class converts the returned data to a string and 
+uses this as context to a re run of the LLM.
+
+If the SQL generation/use fails then the process repeats until either max retries is
+reached or the generated query succeeds in returning data.
+
+## Class relationships
+
+![Athena LLM classes](src/sql_ai/athena/classes.excalidraw.png)
+
+## Answering user questions
+
+Athena LLM class process flow:
+![Athena LLM class](src/sql_ai/athena/athena_llm.excalidraw.png)
+
+## Building SQL
+
+SQL Prompt class process flow:
+![SQL Prompt class](src/sql_ai/athena/sql_prompting.excalidraw.png)

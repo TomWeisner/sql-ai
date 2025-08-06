@@ -1,7 +1,8 @@
-from typing import Callable, Optional, Union
 from contextlib import contextmanager
 from functools import wraps
+from typing import Callable, Optional, Union
 
+from sql_ai.streamlit.utils import sidebar_typewriter
 from sql_ai.tracking.step import (
     Step,
     log_step_starting,
@@ -10,8 +11,6 @@ from sql_ai.tracking.step import (
 from sql_ai.tracking.tracker import (
     step_tracker,
 )
-
-from sql_ai.streamlit.utils import sidebar_typewriter
 
 
 def resolve_step_name(

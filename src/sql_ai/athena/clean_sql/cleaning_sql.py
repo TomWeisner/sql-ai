@@ -7,7 +7,7 @@ from functools import wraps
 from typing import Callable
 
 from sql_ai.athena.table import Table
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 class SQLCleaning(ABC):

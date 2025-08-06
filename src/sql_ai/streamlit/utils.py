@@ -9,15 +9,15 @@ from typing import Callable, Union
 
 import streamlit as st
 
-from sql_ai.athena.tracking.decorator import (
+from sql_ai.tracking.decorator import (
     resolve_step_name,
 )
-from sql_ai.athena.tracking.step import (
+from sql_ai.tracking.step import (
     Step,
     log_step_starting,
     log_unlogged_steps,
 )
-from sql_ai.athena.tracking.tracker import (
+from sql_ai.tracking.tracker import (
     step_tracker,
 )
 

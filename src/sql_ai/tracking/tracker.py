@@ -1,4 +1,4 @@
-from sql_ai.athena.tracking.step import Step
+from sql_ai.tracking.step import Step
 
 
 class StepTracker:

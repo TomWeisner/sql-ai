@@ -1,3 +1,5 @@
+""" "defines objects for pixar films LLM"""
+
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting import (
     SQLPrompt,
@@ -5,6 +7,9 @@ from sql_ai.athena.sql_prompting import (
 from sql_ai.athena.table import Table
 from sql_ai.streamlit.config_dataclass import Config
 
+# data downloaded here: https://erictleung.com/pixarfilms/
+
+# define table
 pixar_films_table = Table(
     name="films",
     description=("Films"),

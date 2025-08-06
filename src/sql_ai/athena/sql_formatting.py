@@ -10,7 +10,7 @@ from sql_ai.athena.clean_sql.sql_standardising import (
     SQLStandards,
 )
 from sql_ai.athena.table import Table
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 class SQLFormatting:

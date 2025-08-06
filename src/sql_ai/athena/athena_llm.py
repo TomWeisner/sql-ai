@@ -15,7 +15,7 @@ from sql_ai.bedrock.utils import (
     wrap_message_in_body,
 )
 from sql_ai.streamlit.config_dataclass import Config
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 class AthenaLLM:

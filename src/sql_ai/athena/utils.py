@@ -7,7 +7,7 @@ import pandas as pd
 from mypy_boto3_athena import AthenaClient
 
 from sql_ai.athena.table import Table
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 def get_starting_capitalized_word(line: str) -> Optional[str]:

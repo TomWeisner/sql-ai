@@ -8,7 +8,7 @@ from sql_ai.bedrock.utils import (
     call_model_direct,
     wrap_message_in_body,
 )
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 general_context_default = """
 You are an expert Athena SQL generator.

@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from sql_ai.streamlit.utils import track_step_and_log
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 def wrap_message_in_body(

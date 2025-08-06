@@ -60,14 +60,14 @@ reached or the generated query succeeds in returning data.
 
 ## Class relationships
 
-![Athena LLM classes](classes.excalidraw.png)
+![Athena LLM classes](src/sql_ai/athena/classes.excalidraw.png)
 
 ## Answering user questions
 
 Athena LLM class process flow:
-![Athena LLM class](athena_llm.excalidraw.png)
+![Athena LLM class](src/sql_ai/athena/athena_llm.excalidraw.png)
 
 ## Building SQL
 
 SQL Prompt class process flow:
-![SQL Prompt class](sql_prompting.excalidraw.png)
+![SQL Prompt class](src/sql_ai/athena/sql_prompting.excalidraw.png)

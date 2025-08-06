@@ -4,7 +4,7 @@ import nox_poetry
 # Linting
 @nox_poetry.session(tags=["style"])
 def lint(session: nox_poetry.Session) -> None:
-    session.install("flake8")
+    session.install("flake8", "flake8-black")
     session.run("flake8", "--max-line-length=90", "src", "tests")
 
 

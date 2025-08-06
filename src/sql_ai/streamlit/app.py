@@ -21,9 +21,8 @@ from sql_ai.streamlit.utils import (
     display_enhanced_traceback,
     neat_prompt,
     print_message,
-    track_step_and_log,
-    track_step_and_log_cm,
 )
+from sql_ai.tracking.decorator import track_step_and_log, track_step_and_log_cm
 
 
 class ChatbotApp:

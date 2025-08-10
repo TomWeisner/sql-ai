@@ -34,7 +34,7 @@ PixarConfig = Config(
     aws_region="eu-west-2",
     aws_athena_s3_output_bucket="athena-output-688357424058",
     aws_profile="personal",
-    bedrock_model="claude-3.7",
+    bedrock_model_key="claude-3.7",
     max_tokens=2000,
     temperature=0.9,
 )

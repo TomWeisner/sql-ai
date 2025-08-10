@@ -2,7 +2,8 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Optional, Sequence
-
+from mypy_boto3_athena import AthenaClient
+from botocore.client import BaseClient  # for generic boto3 clients like bedrock-runtime
 import boto3
 import pandas as pd
 
@@ -29,8 +30,8 @@ class AthenaLLM:
         tables: Optional[Sequence["Table"]] = None,
         sql_prompt: Optional["SQLPrompt"] = None,
         session: Optional[boto3.Session] = None,
-        athena_client: Optional[object] = None,
-        bedrock_runtime_client: Optional[object] = None,
+        athena_client: Optional[AthenaClient] = None,
+        bedrock_runtime_client: Optional[BaseClient] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.config = config

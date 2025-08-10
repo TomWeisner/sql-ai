@@ -9,6 +9,7 @@ streamlit run src/sql_ai/streamlit/app.py
 
 import logging
 from datetime import datetime
+
 import streamlit as st
 
 from sql_ai.app_objects.cem_timetable import CEMLLM

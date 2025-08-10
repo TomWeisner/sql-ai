@@ -1,25 +1,27 @@
 from __future__ import annotations
+
+import logging
+import time
 from dataclasses import dataclass
 from typing import Optional, Sequence
-import time
-import logging
+
 import boto3
 import pandas as pd
 
-from sql_ai.athena.table import Table
-from sql_ai.athena.utils import get_schema_from_athena, run_query
-from sql_ai.tracking.decorator import track_step_and_log
-from sql_ai.athena.sql_prompting import SQLPrompt
 from sql_ai.app_meta_objects.config import Config
 from sql_ai.athena.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
+from sql_ai.athena.sql_prompting import SQLPrompt
+from sql_ai.athena.table import Table
+from sql_ai.athena.utils import get_schema_from_athena, run_query
 from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
+from sql_ai.tracking.decorator import track_step_and_log
 
 
 # --- Types -------------------------------------------------------
 @dataclass(frozen=True)
 class SQLResult:
     sql: str
-    prompt_body: PromptBody
+    prompt_body: Optional[PromptBody]
     format_logs: list[str]
     error_traceback: str = ""
 
@@ -39,9 +41,9 @@ class AthenaService:
         )
 
     @track_step_and_log("🔍 Getting schemas for tables")
-    def populate_schemas(self) -> list[Table]:
+    def populate_schemas(self) -> Sequence[Table]:
         for t in self.tables:
-            if getattr(t, "schema", None) is None:  # cache if missing
+            if getattr(t, "schema", None) is None:
                 t.schema = get_schema_from_athena(
                     athena_client=self.client, table=t, output_bucket=self.output_bucket
                 )
@@ -64,7 +66,7 @@ class AthenaLLM:
     ):
         self.config = config
         self.tables: list[Table] = list(tables) if tables else []
-        self.sql_prompt = sql_prompt or SQLPrompt()
+        self.sql_prompt = sql_prompt or SQLPrompt(model=config.bedrock_model)
         self.max_sql_generation_retries = 3
 
         session = session or boto3.Session(profile_name=config.aws_profile)
@@ -103,7 +105,6 @@ class AthenaLLM:
             sql, prompt_body = self.generate_sql(
                 attempt_number=attempt_number,
                 user_question=input + addition,
-                tables=self.tables,
             )
             sql_formatting_result = self.athena.format_query(sql)
             if not sql_formatting_result.error_trace:
@@ -127,10 +128,10 @@ class AthenaLLM:
         Attempt #{str(attempt_number)}..."""
     )
     def generate_sql(
-        self, attempt_number: int, user_question: str, tables: Sequence[Table]
+        self, attempt_number: int, user_question: str
     ) -> tuple[str, PromptBody]:
         body: PromptBody = self.sql_prompt.build_prompt_body_for_sql(
-            user_question, tables
+            user_question=user_question, tables=self.tables
         )
         sql: str = self.bedrock.call(
             body=body,

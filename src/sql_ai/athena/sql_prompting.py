@@ -1,9 +1,11 @@
 from abc import ABC
+
 import pandas as pd
+
 from sql_ai.athena.table import Table
-from sql_ai.tracking.decorator import track_step_and_log
 from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
 from sql_ai.bedrock.models import Model
+from sql_ai.tracking.decorator import track_step_and_log
 
 general_context_default = """
 You are an expert Athena SQL generator.

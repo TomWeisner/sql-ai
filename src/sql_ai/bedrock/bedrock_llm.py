@@ -1,5 +1,5 @@
 import json
-from typing import Any, Optional, TypedDict
+from typing import Any, TypedDict
 
 import pandas as pd
 
@@ -37,17 +37,14 @@ class BedrockService:
     def build_body(
         message: str,
         model: Model,
-        extra: Optional[dict[str, Any]] = None,
     ) -> PromptBody:
         """Create a Bedrock chat body for a single-user message."""
-        body: PromptBody = {
-            "messages": [{"role": "user", "content": message}],
-            "max_tokens": model.max_tokens,
-            "temperature": model.temperature,
-            "top_p": model.top_p,
-        }
-        if extra:
-            body.update(extra)  # e.g., system prompts or vendor-specific fields
+        body = PromptBody(
+            messages=[{"role": "user", "content": message}],
+            max_tokens=model.max_tokens,
+            temperature=model.temperature,
+            top_p=model.top_p,
+        )
         return BedrockService._ensure_provider_fields(body, model=model)
 
     @staticmethod
@@ -69,11 +66,11 @@ class BedrockService:
         Invoke the Bedrock model and return the first text chunk.
         Pass a body built by `build_body()` (or your own dict with the same shape).
         """
-        body = self._ensure_provider_fields(dict(body), model=model)
+        body = self._ensure_provider_fields(body, model=model)
 
         response = self.client.invoke_model(
             modelId=model.id,
-            body=json.dumps(body),
+            body=json.dumps(dict(body)),
             contentType="application/json",
         )
 
@@ -81,7 +78,7 @@ class BedrockService:
         return response_body["content"][0]["text"].strip()
 
     @staticmethod
-    def _ensure_provider_fields(body: PromptBody, model: Model) -> dict:
+    def _ensure_provider_fields(body: PromptBody, model: Model) -> PromptBody:
         """
         Add provider-specific fields if missing (e.g., Anthropic version).
         """

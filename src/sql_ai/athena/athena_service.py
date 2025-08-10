@@ -50,6 +50,7 @@ class AthenaService:
     @track_step_and_log("🔍 Getting schemas for tables")
     def populate_schemas(self) -> Sequence[Table]:
         for t in self.tables:
+            print(f"Populating schema for {t}")
             if getattr(t, "schema", None) is None:
                 t.schema = self.get_schema_from_athena(t)
         return self.tables
@@ -57,6 +58,7 @@ class AthenaService:
     @track_step_and_log(lambda self, table_name, **__: f"Table: {table_name}")
     def show_create_table(self, table_name: str) -> str:
         query = f"SHOW CREATE TABLE {table_name}"
+        print(f"Running query: {query}")
         rows = self._fetch_results(query=query)
         # skip header; each following row has the single DDL string
         return "\n".join((row[0] or "") for row in rows[1:])
@@ -70,13 +72,7 @@ class AthenaService:
         if not table.catalog:
             raise ValueError("Table catalog is required")
 
-        # Temporarily override db/catalog if Table carries its own
-        prev_db, prev_cat = self.database, self.catalog
-        try:
-            self.database, self.catalog = table.database, table.catalog
-            ddl = self.show_create_table(table.name)
-        finally:
-            self.database, self.catalog = prev_db, prev_cat
+        ddl = self.show_create_table(table.name)
 
         uninteresting = {
             "CLUSTERED_BY",
@@ -121,6 +117,7 @@ class AthenaService:
             QueryExecutionContext={"Database": self.database, "Catalog": self.catalog},
             ResultConfiguration={"OutputLocation": output_path},
         )
+        print(f"Query execution started: {resp['QueryExecutionId']}")
         execution_id = resp["QueryExecutionId"]
 
         # Poll for completion
@@ -159,7 +156,6 @@ class AthenaService:
                 first_page = False
                 cols = [c["Label"] for c in result_set["ResultSetMetadata"]["ColumnInfo"]]
                 rows.append(cols)
-                result_rows = result_rows[1:]  # drop header row from data
 
             for r in result_rows:
                 vals = [self._parse_value(f.get("VarCharValue", "")) for f in r["Data"]]

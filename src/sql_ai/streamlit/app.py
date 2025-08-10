@@ -7,12 +7,12 @@ Run the app with the below from the project root:
 streamlit run src/sql_ai/streamlit/app.py
 """
 
+import logging
 from datetime import datetime
-
 import streamlit as st
 
-from sql_ai.app_meta_objects.cem_timetable import CEMLLM
-from sql_ai.app_meta_objects.pixar_films import PixarLLM
+from sql_ai.app_objects.cem_timetable import CEMLLM
+from sql_ai.app_objects.pixar_films import PixarLLM
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
@@ -24,6 +24,10 @@ from sql_ai.streamlit.utils import (
     print_message,
 )
 from sql_ai.tracking.decorator import track_step_and_log, track_step_and_log_cm
+
+# Suppress Streamlit-specific warnings/logs
+logging.getLogger("streamlit").setLevel(logging.ERROR)
+logging.getLogger("streamlit.runtime.scriptruncontext").setLevel(logging.ERROR)
 
 
 class ChatbotApp:

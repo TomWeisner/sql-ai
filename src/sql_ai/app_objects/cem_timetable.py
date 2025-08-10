@@ -1,10 +1,9 @@
-from sql_ai.config import Config
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting.prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-from sql_ai.bedrock.models import MODEL_REGISTRY
+from sql_ai.config import Config
 
 # define table
 cem_timetable_table = Table(
@@ -56,7 +55,7 @@ CEMConfig = Config(
     aws_region="eu-west-2",
     aws_athena_s3_output_bucket="aws-athena-query-results-eu-west-2-382901073838",
     aws_profile="playground",
-    bedrock_model=MODEL_REGISTRY["claude-3.7"],
+    bedrock_model_key="claude-3.7",
     max_tokens=2000,
     temperature=0.9,
 )

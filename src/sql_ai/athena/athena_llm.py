@@ -6,11 +6,11 @@ from typing import Optional, Sequence
 import boto3
 import pandas as pd
 
-from sql_ai.config import Config
+from sql_ai.athena.athena_service import AthenaService
 from sql_ai.athena.sql_prompting.prompting import SQLPrompt
 from sql_ai.athena.table import Table
-from sql_ai.athena.athena_service import AthenaService
 from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
+from sql_ai.config import Config
 from sql_ai.tracking.decorator import track_step_and_log
 
 

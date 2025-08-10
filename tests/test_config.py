@@ -1,5 +1,6 @@
 # tests/test_config.py
 import pytest
+
 from sql_ai.config import Config
 
 

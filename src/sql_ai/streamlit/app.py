@@ -16,7 +16,8 @@ from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
     set_title_top_padding,
 )
-from sql_ai.streamlit.pixar_films import PixarLLM
+from sql_ai.app_meta_objects.pixar_films import PixarLLM
+from sql_ai.app_meta_objects.cem_timetable import CEMLLM
 from sql_ai.streamlit.utils import (
     display_enhanced_traceback,
     neat_prompt,
@@ -156,7 +157,7 @@ class ChatbotApp:
     @track_step_and_log("**Processing user input**")
     def _handle_question(self, question, keep_context, use_supplied_sql):
         self._clear_previous_variables_and_rewrite_messages(question, keep_context)
-        with st.spinner("Generating answer..."):
+        with st.spinner(f"Generating answer... ({self.llm.model.name})"):
             self._handle_question_actual(question, use_supplied_sql)
 
     def _render_tabs(self):
@@ -245,12 +246,22 @@ class ChatbotApp:
 
 
 if __name__ == "__main__":
-    question = "avg length of film?"
-
-    CB = ChatbotApp(
-        athena_llm=PixarLLM,
-        title="Pixar",
-        default_question=question,
-    )
+    use_cem = True
+    if use_cem:
+        question = (
+            "on avg how many trains stop at peterborough each day over the last week?"
+        )
+        CB = ChatbotApp(
+            athena_llm=CEMLLM,
+            title="CEM Timetable",
+            default_question=question,
+        )
+    else:
+        question = "avg length of film?"
+        CB = ChatbotApp(
+            athena_llm=PixarLLM,
+            title="Pixar",
+            default_question=question,
+        )
 
     CB.run()

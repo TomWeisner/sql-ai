@@ -1,6 +1,6 @@
 from abc import ABC
 
-from sql_ai.athena.sql_formatting import (
+from sql_ai.athena.sql_formatting.formatting import (
     SQLFormatting,
 )
 from sql_ai.athena.table import Table
@@ -9,6 +9,8 @@ from sql_ai.bedrock.utils import (
     wrap_message_in_body,
 )
 from sql_ai.tracking.decorator import track_step_and_log
+from sql_ai.bedrock.models import Model
+
 
 general_context_default = """
 You are an expert Athena SQL generator.
@@ -54,7 +56,7 @@ class SQLPrompt(ABC):
         self.formatter = SQLFormatting()
 
     def generate_sql(
-        self, user_question, tables: list[Table], bedrock_runtime_client
+        self, user_question, tables: list[Table], bedrock_runtime_client, model: Model
     ) -> tuple[str, dict, list[str], str]:
 
         if len(tables) == 0:
@@ -67,8 +69,7 @@ class SQLPrompt(ABC):
         body = self.build_prompt_body(user_question, tables)
         bedrock_response = call_model_direct(
             body=body,
-            model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-            model_version="bedrock-2023-05-31",
+            model=model,
             bedrock_runtime_client=self.bedrock_runtime_client,
         )
         formatted_bedrock_response, formatting_logs, error_trace = (

@@ -14,7 +14,7 @@ from sql_ai.bedrock.utils import (
     data_to_prompt,
     wrap_message_in_body,
 )
-from sql_ai.streamlit.config_dataclass import Config
+from sql_ai.app_meta_objects.config import Config
 from sql_ai.tracking.decorator import track_step_and_log
 
 
@@ -36,11 +36,10 @@ class AthenaLLM:
         self.bedrock_runtime_client = session.client(
             "bedrock-runtime", region_name=config.aws_region
         )  # type: ignore
-        self.aws_bedrock_model_id = config.aws_bedrock_model_id
-        self.aws_bedrock_model_version = config.aws_bedrock_model_version
         self.max_tokens = config.max_tokens
         self.temperature = config.temperature
         self.aws_athena_output_bucket = config.aws_athena_output_bucket
+        self.model = config.bedrock_model
 
         assert (
             self.max_tokens > 0 and self.max_tokens <= 10000
@@ -80,9 +79,6 @@ class AthenaLLM:
             output_bucket=self.aws_athena_output_bucket,
         )
 
-    def dataframe_to_prompt(self, data: pd.DataFrame) -> str:
-        return data_to_prompt(data=data)
-
     @track_step_and_log("✍️ Generating SQL")
     def _generate_sql_with_retries(
         self, input: str, max_retries: int = 3
@@ -106,7 +102,7 @@ class AthenaLLM:
         answer = call_model_direct(
             body=body_prompt,
             bedrock_runtime_client=self.bedrock_runtime_client,
-            model_id=self.aws_bedrock_model_id,
+            model=self.model,
         )
         return answer, body_prompt
 
@@ -114,7 +110,7 @@ class AthenaLLM:
     def body_prompt_from_data(
         self, input: str, data: pd.DataFrame, query: Optional[str] = None
     ) -> dict:
-        prompt_data = self.dataframe_to_prompt(data=data)
+        prompt_data = data_to_prompt(data=data)
         prompt = self._generate_final_answer_prompt(
             user_question=input, query=query, prompt_data=prompt_data
         )
@@ -169,6 +165,7 @@ class AthenaLLM:
         sql, prompt, format_logs, error_traceback = self.sql_prompt.generate_sql(
             user_question=user_question,
             tables=self.tables,
+            model=self.model,
             bedrock_runtime_client=self.bedrock_runtime_client,
         )
         is_valid_sql, reason = self.ensure_is_valid_sql(sql)

@@ -1,7 +1,7 @@
 import re
 from typing import Callable, Optional
 
-from sql_ai.athena.clean_sql.cleaning_sql import (
+from sql_ai.athena.sql_formatting.clean_base import (
     SQLCleaning,
 )
 

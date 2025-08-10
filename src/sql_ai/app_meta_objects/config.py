@@ -1,16 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sql_ai.utils.utils import find_aws_profile_by_account_id
+from sql_ai.bedrock.models import MODEL_REGISTRY, Model
 
 
 @dataclass
 class Config:
     aws_account_id: str = "688357424058"
-    aws_profile: str = ""
+    aws_profile: str = "personal"
     aws_region: str = "eu-west-2"
     aws_athena_output_bucket: str = ""
-    aws_bedrock_model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0"
-    aws_bedrock_model_version: str = "bedrock-2023-05-31"
+    bedrock_model: Model = field(default_factory=lambda: MODEL_REGISTRY["claude-3.7"])
     max_tokens: int = 2000
     temperature: float = 0.9
 

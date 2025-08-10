@@ -5,10 +5,10 @@ from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-from sql_ai.streamlit.config_dataclass import Config
+from sql_ai.app_meta_objects.config import Config
 
 
-@patch("sql_ai.streamlit.config_dataclass.find_aws_profile_by_account_id")
+@patch("sql_ai.streamlit.config.find_aws_profile_by_account_id")
 @patch("boto3.Session")
 def test_athena_llm_instantiation(mock_boto_session, mock_find_profile):
     mock_find_profile.return_value = "test_profile"

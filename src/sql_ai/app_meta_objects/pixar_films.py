@@ -5,7 +5,8 @@ from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-from sql_ai.streamlit.config_dataclass import Config
+from sql_ai.app_meta_objects.config import Config
+from sql_ai.bedrock.models import MODEL_REGISTRY
 
 # data downloaded here: https://erictleung.com/pixarfilms/
 
@@ -33,9 +34,8 @@ PixarConfig = Config(
     aws_account_id="688357424058",
     aws_region="eu-west-2",
     aws_athena_output_bucket="athena-output-688357424058",
-    aws_profile="default",
-    aws_bedrock_model_id="anthropic.claude-3-sonnet-20240229-v1:0",
-    aws_bedrock_model_version="bedrock-2023-05-31",
+    aws_profile="personal",
+    bedrock_model=MODEL_REGISTRY["claude-3.7"],
     max_tokens=2000,
     temperature=0.9,
 )

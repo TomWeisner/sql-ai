@@ -3,6 +3,7 @@ import json
 import pandas as pd
 
 from sql_ai.tracking.decorator import track_step_and_log
+from sql_ai.bedrock.models import Model
 
 
 def wrap_message_in_body(
@@ -34,18 +35,17 @@ def data_to_prompt(data: pd.DataFrame) -> str:
 def call_model_direct(
     body: dict[str, str],
     bedrock_runtime_client,
-    model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0",
-    model_version: str = "bedrock-2023-05-31",
+    model: Model,
 ) -> str:
 
     if not bedrock_runtime_client:
         raise ValueError("bedrock_runtime_client is required")
 
-    if "anthropic" in model_id and "anthropic_version" not in body:
-        body["anthropic_version"] = model_version
+    if "anthropic" in model.id and "anthropic_version" not in body:
+        body["anthropic_version"] = model.version
 
     response = bedrock_runtime_client.invoke_model(
-        modelId=model_id, body=json.dumps(body), contentType="application/json"
+        modelId=model.id, body=json.dumps(body), contentType="application/json"
     )
 
     response_body = json.loads(response["body"].read())

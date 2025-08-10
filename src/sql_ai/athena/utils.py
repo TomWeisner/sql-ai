@@ -61,6 +61,10 @@ def fetch_athena_results(
         session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
         client = session.client("athena")
 
+    print("AWS profile:", aws_profile)
+    print("AWS region:", aws_region)
+    print(client)
+
     if limit:
         query += f" LIMIT {limit}"
 

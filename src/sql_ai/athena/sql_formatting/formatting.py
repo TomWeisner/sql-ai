@@ -1,12 +1,12 @@
 import re
 
-from sql_ai.athena.clean_sql.cleaning_sql import (
+from sql_ai.athena.sql_formatting.clean_base import (
     SQLCleaning,
 )
-from sql_ai.athena.clean_sql.sql_fixing import (
-    SQLAthena,
+from sql_ai.athena.sql_formatting.clean_fixing import (
+    SQLAthenaCompliance,
 )
-from sql_ai.athena.clean_sql.sql_standardising import (
+from sql_ai.athena.sql_formatting.clean_standardising import (
     SQLStandards,
 )
 from sql_ai.athena.table import Table
@@ -96,7 +96,7 @@ class SQLFormatting:
         self.format_logs = ["Originally generated SQL:\n\n" + sql]
 
         formatters: dict[str, SQLCleaning] = {
-            "Athena fixing": SQLAthena(),
+            "Athena fixing": SQLAthenaCompliance(),
             "SQL standards": SQLStandards(),
         }
 

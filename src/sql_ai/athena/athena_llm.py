@@ -124,8 +124,7 @@ class AthenaLLM:
         )
 
     @track_step_and_log(
-        lambda self, attempt_number, *_, **__: f"""
-        Attempt #{str(attempt_number)}..."""
+        lambda self, attempt_number, *_, **__: f"""Attempt #{str(attempt_number)}..."""
     )
     def generate_sql(
         self, attempt_number: int, user_question: str

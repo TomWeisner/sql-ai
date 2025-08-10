@@ -2,10 +2,11 @@ import logging
 import time
 from dataclasses import dataclass
 from typing import Optional, Sequence
-from mypy_boto3_athena import AthenaClient
-from botocore.client import BaseClient  # for generic boto3 clients like bedrock-runtime
+
 import boto3
 import pandas as pd
+from botocore.client import BaseClient  # for generic boto3 clients like bedrock-runtime
+from mypy_boto3_athena import AthenaClient
 
 from sql_ai.athena.athena_service import AthenaService
 from sql_ai.athena.sql_prompting.prompting import SQLPrompt

@@ -11,13 +11,13 @@ from datetime import datetime
 
 import streamlit as st
 
+from sql_ai.app_meta_objects.cem_timetable import CEMLLM
+from sql_ai.app_meta_objects.pixar_films import PixarLLM
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
     set_title_top_padding,
 )
-from sql_ai.app_meta_objects.pixar_films import PixarLLM
-from sql_ai.app_meta_objects.cem_timetable import CEMLLM
 from sql_ai.streamlit.utils import (
     display_enhanced_traceback,
     neat_prompt,

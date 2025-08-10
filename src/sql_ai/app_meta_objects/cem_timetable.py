@@ -1,11 +1,10 @@
+from sql_ai.app_meta_objects.config import Config
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
-from sql_ai.app_meta_objects.config import Config
 from sql_ai.bedrock.models import MODEL_REGISTRY
-
 
 # define table
 cem_timetable_table = Table(

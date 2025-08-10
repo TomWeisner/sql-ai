@@ -4,6 +4,7 @@ import boto3
 import pandas as pd
 import sqlglot
 
+from sql_ai.app_meta_objects.config import Config
 from sql_ai.athena.sql_prompting import (
     SQLPrompt,
 )
@@ -14,7 +15,6 @@ from sql_ai.bedrock.utils import (
     data_to_prompt,
     wrap_message_in_body,
 )
-from sql_ai.app_meta_objects.config import Config
 from sql_ai.tracking.decorator import track_step_and_log
 
 

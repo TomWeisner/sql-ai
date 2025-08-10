@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
-from sql_ai.utils.utils import find_aws_profile_by_account_id
 from sql_ai.bedrock.models import MODEL_REGISTRY, Model
+from sql_ai.utils.utils import find_aws_profile_by_account_id
 
 
 @dataclass

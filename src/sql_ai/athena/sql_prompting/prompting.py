@@ -3,7 +3,7 @@ from abc import ABC
 import pandas as pd
 
 from sql_ai.athena.table import Table
-from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
+from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
 from sql_ai.bedrock.models import Model
 from sql_ai.tracking.decorator import track_step_and_log
 
@@ -42,6 +42,7 @@ Guidelines:
 - DO NOT group by using column aliases, instead use the full field expression.
 - When calculating durations, always include the time unit in the column name e.g. <duration>_seconds
 - When using WITH clauses, try to apply WHERE filters as early as possible i.e. inside the WITH block
+- Never wrap a query in encapsulating quotes, just return the query itself!
 """  # noqa: E501
 
 

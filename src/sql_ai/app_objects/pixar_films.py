@@ -1,8 +1,8 @@
 """ "defines objects for pixar films LLM"""
 
-from sql_ai.app_meta_objects.config import Config
+from sql_ai.config import Config
 from sql_ai.athena.athena_llm import AthenaLLM
-from sql_ai.athena.sql_prompting import (
+from sql_ai.athena.sql_prompting.prompting import (
     SQLPrompt,
 )
 from sql_ai.athena.table import Table
@@ -33,7 +33,7 @@ class PixarFilmsPrompt(SQLPrompt):
 PixarConfig = Config(
     aws_account_id="688357424058",
     aws_region="eu-west-2",
-    aws_athena_output_bucket="athena-output-688357424058",
+    aws_athena_s3_output_bucket="athena-output-688357424058",
     aws_profile="personal",
     bedrock_model=MODEL_REGISTRY["claude-3.7"],
     max_tokens=2000,

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import logging
 import time
 from dataclasses import dataclass
@@ -8,49 +6,20 @@ from typing import Optional, Sequence
 import boto3
 import pandas as pd
 
-from sql_ai.app_meta_objects.config import Config
-from sql_ai.athena.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
-from sql_ai.athena.sql_prompting import SQLPrompt
+from sql_ai.config import Config
+from sql_ai.athena.sql_prompting.prompting import SQLPrompt
 from sql_ai.athena.table import Table
-from sql_ai.athena.utils import get_schema_from_athena, run_query
-from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
+from sql_ai.athena.athena_service import AthenaService
+from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
 from sql_ai.tracking.decorator import track_step_and_log
 
 
-# --- Types -------------------------------------------------------
 @dataclass(frozen=True)
 class SQLResult:
     sql: str
     prompt_body: Optional[PromptBody]
     format_logs: list[str]
     error_traceback: str = ""
-
-
-# --- Services ----------------------------------------------------
-
-
-class AthenaService:
-    def __init__(self, client, output_bucket: str, tables: Sequence[Table]):
-        self.client = client
-        self.output_bucket = output_bucket
-        self.tables = tables
-
-    def run_query(self, query: str) -> pd.DataFrame:
-        return run_query(
-            query=query, client=self.client, output_bucket=self.output_bucket
-        )
-
-    @track_step_and_log("🔍 Getting schemas for tables")
-    def populate_schemas(self) -> Sequence[Table]:
-        for t in self.tables:
-            if getattr(t, "schema", None) is None:
-                t.schema = get_schema_from_athena(
-                    athena_client=self.client, table=t, output_bucket=self.output_bucket
-                )
-        return self.tables
-
-    def format_query(self, sql: str) -> SQLFormattingOutput:
-        return SQLFormatting().format_sql(sql, tables=self.tables)
 
 
 class AthenaLLM:
@@ -78,7 +47,13 @@ class AthenaLLM:
         )
 
         self.athena = AthenaService(
-            athena_client, config.aws_athena_output_bucket, tables=self.tables
+            output_bucket=config.aws_athena_s3_output_bucket,
+            tables=self.tables,
+            client=athena_client,
+            database=config.aws_athena_database,
+            catalog=config.aws_athena_catalog,
+            aws_profile=config.aws_profile,
+            aws_region=config.aws_region,
         )
         self.bedrock = BedrockService(bedrock_runtime_client)
 

@@ -138,6 +138,7 @@ class SQLFormatting:
         while not stripped:
             for w in wrappers:
                 if s.startswith(w) and s.endswith(w):
+                    print("Removind wrappers", w)
                     s = s[1:-1].strip()
                 else:
                     stripped = True

@@ -24,7 +24,7 @@ custom_guidelines = """
 
 class PixarFilmsPrompt(SQLPrompt):
     def __init__(self):
-        super().__init__()
+        super().__init__(model=PixarConfig.bedrock_model)
 
     def additional_guidelines(self):
         return custom_guidelines

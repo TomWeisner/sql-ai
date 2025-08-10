@@ -1,15 +1,9 @@
 from abc import ABC
-
-from sql_ai.athena.sql_formatting.formatting import (
-    SQLFormatting,
-)
+import pandas as pd
 from sql_ai.athena.table import Table
-from sql_ai.bedrock.models import Model
-from sql_ai.bedrock.utils import (
-    call_model_direct,
-    wrap_message_in_body,
-)
 from sql_ai.tracking.decorator import track_step_and_log
+from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
+from sql_ai.bedrock.models import Model
 
 general_context_default = """
 You are an expert Athena SQL generator.
@@ -51,38 +45,16 @@ Guidelines:
 
 class SQLPrompt(ABC):
 
-    def __init__(self):
-        self.formatter = SQLFormatting()
-
-    def generate_sql(
-        self, user_question, tables: list[Table], bedrock_runtime_client, model: Model
-    ) -> tuple[str, dict, list[str], str]:
-
-        if len(tables) == 0:
-            return "No tables found - unable to generate query.", {}, [], ""
-
-        self.bedrock_runtime_client = bedrock_runtime_client
-
-        tables = tables.copy()  # dont overwrite originals
-
-        body = self.build_prompt_body(user_question, tables)
-        bedrock_response = call_model_direct(
-            body=body,
-            model=model,
-            bedrock_runtime_client=self.bedrock_runtime_client,
-        )
-        formatted_bedrock_response, formatting_logs, error_trace = (
-            self.formatter.format_sql(sql=bedrock_response, tables=tables)
-        )
-        return formatted_bedrock_response, body, formatting_logs, error_trace
+    def __init__(self, model: Model):
+        self.model = model
 
     @track_step_and_log("🛠️ Making prompt")
-    def build_prompt_body(self, user_question, tables: list[Table]):
+    def build_prompt_body_for_sql(self, user_question, tables: list[Table]) -> PromptBody:
         prompt = self.general_context(user_question, tables)
         prompt += self.additional_context()
         prompt += self.general_guidelines()
         prompt += self.additional_guidelines()
-        body = wrap_message_in_body(prompt, max_tokens=2000)
+        body = BedrockService.build_body(message=prompt, model=self.model)
         return body
 
     def general_context(self, user_question, tables: list[Table]) -> str:
@@ -97,3 +69,21 @@ class SQLPrompt(ABC):
 
     def additional_guidelines(self) -> str:
         return ""
+
+    def build_prompt_body_from_data(
+        self,
+        user_question: str,
+        data: pd.DataFrame,
+    ) -> PromptBody:
+        prompt_data = BedrockService.data_to_prompt(data=data)
+        prompt = (
+            "You are a helpful data analyst assistant.\n"
+            "Answer the user's question/command:\n\n"
+            f'"{user_question}"\n\n'
+            "Use the below data in your answer:\n"
+            f"{prompt_data}\n\n"
+            "IF the answer contains numbers, round sensibly, include units, "
+            "and show the numeric part in **bold**.\n"
+            "Do not describe your steps; just answer."
+        )
+        return BedrockService.build_body(message=prompt, model=self.model)

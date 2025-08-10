@@ -45,7 +45,7 @@ custom_guidelines = """
 
 class CEMPrompt(SQLPrompt):
     def __init__(self):
-        super().__init__()
+        super().__init__(model=CEMConfig.bedrock_model)
 
     def additional_guidelines(self):
         return custom_guidelines
@@ -66,3 +66,5 @@ CEMLLM = AthenaLLM(
     sql_prompt=CEMPrompt(),
     config=CEMConfig,
 )
+
+print(CEMLLM)

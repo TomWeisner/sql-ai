@@ -1,4 +1,5 @@
 import re
+from dataclasses import dataclass
 
 from sql_ai.athena.sql_formatting.clean_base import (
     SQLCleaning,
@@ -13,8 +14,75 @@ from sql_ai.athena.table import Table
 from sql_ai.tracking.decorator import track_step_and_log
 
 
+@dataclass
+class SQLFormattingOutput:
+    formatted_sql: str
+    logs: list[str]
+    error_trace: str
+
+
 class SQLFormatting:
     """Formatting logic (hand holding) for supplied SQL queries"""
+
+    @track_step_and_log("🎨 Formatting SQL")
+    def format_sql(self, sql: str, tables: list[Table]) -> SQLFormattingOutput:
+        """
+        Formats a SQL query to ensure compatibility with Amazon
+        Athena and compliance with internal SQL standards.
+
+        This method applies a sequence of formatting transformations to:
+        - Correct syntax or structure that may cause Athena-specific issues
+        - Enforce project-wide SQL coding conventions
+        - Track and log each transformation applied
+
+        Parameters:
+        ----------
+        sql : str
+            The raw SQL query to be formatted.
+        tables : list[Table]
+            A list of Table objects that the SQL query references.
+
+        Returns:
+        -------
+        tuple[str, list[str], str]
+            - Formatted SQL query (str)
+            - List of formatting step logs (list[str])
+            - Error trace, if any occurred during formatting (str)
+        """
+        tables = tables.copy()
+        error_trace = ""
+
+        tables = self._find_generated_with_tables(sql, tables)
+        tables = self._find_information_schema_tables(sql, tables)
+
+        sql = self._remove_encapsulating_quotes(sql)
+
+        self.format_logs = ["Originally generated SQL:\n\n" + sql]
+
+        formatters: dict[str, SQLCleaning] = {
+            "Athena fixing": SQLAthenaCompliance(),
+            "SQL standards": SQLStandards(),
+        }
+
+        for formatter_action, formatter in formatters.items():
+            print(f"Applying {formatter_action}")
+            if error_trace:
+                break
+            sql, logs, error_trace = formatter.format_sql(sql, tables)
+            self.format_logs.append(
+                f"\nApplying {formatter_action}:\n\n"
+                + "\n".join(logs)
+                + "\n\n--->\n\n"
+                + sql
+            )
+
+        print("SQL formatting complete")
+
+        return SQLFormattingOutput(
+            formatted_sql=sql,
+            logs=self.format_logs,
+            error_trace=error_trace,
+        )
 
     def _find_generated_with_tables(self, sql: str, tables: list[Table]) -> list[Table]:
         """
@@ -62,55 +130,15 @@ class SQLFormatting:
             tables.append(metadata_table)
         return tables
 
-    @track_step_and_log("🎨 Formatting SQL")
-    def format_sql(self, sql: str, tables: list[Table]) -> tuple[str, list[str], str]:
-        """
-        Formats a SQL query to ensure compatibility with Amazon
-        Athena and compliance with internal SQL standards.
+    def _remove_encapsulating_quotes(self, sql: str) -> str:
+        s = sql.strip()
+        wrappers = ("`", "'", '"', "`")
 
-        This method applies a sequence of formatting transformations to:
-        - Correct syntax or structure that may cause Athena-specific issues
-        - Enforce project-wide SQL coding conventions
-        - Track and log each transformation applied
-
-        Parameters:
-        ----------
-        sql : str
-            The raw SQL query to be formatted.
-        tables : list[Table]
-            A list of Table objects that the SQL query references.
-
-        Returns:
-        -------
-        tuple[str, list[str], str]
-            - Formatted SQL query (str)
-            - List of formatting step logs (list[str])
-            - Error trace, if any occurred during formatting (str)
-        """
-        tables = tables.copy()
-        error_trace = ""
-
-        tables = self._find_generated_with_tables(sql, tables)
-        tables = self._find_information_schema_tables(sql, tables)
-
-        self.format_logs = ["Originally generated SQL:\n\n" + sql]
-
-        formatters: dict[str, SQLCleaning] = {
-            "Athena fixing": SQLAthenaCompliance(),
-            "SQL standards": SQLStandards(),
-        }
-
-        for formatter_action, formatter in formatters.items():
-            print(f"Applying {formatter_action}")
-            if error_trace:
-                break
-            sql, logs, error_trace = formatter.format_sql(sql, tables)
-            self.format_logs.append(
-                f"\nApplying {formatter_action}:\n\n"
-                + "\n".join(logs)
-                + "\n\n--->\n\n"
-                + sql
-            )
-
-        print("SQL formatting complete")
-        return sql, self.format_logs, error_trace
+        stripped = False
+        while not stripped:
+            for w in wrappers:
+                if s.startswith(w) and s.endswith(w):
+                    s = s[1:-1].strip()
+                else:
+                    stripped = True
+        return s

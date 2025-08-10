@@ -1,202 +1,151 @@
-from typing import Optional
-
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import Optional, Sequence
+import time
+import logging
 import boto3
 import pandas as pd
-import sqlglot
 
-from sql_ai.app_meta_objects.config import Config
-from sql_ai.athena.sql_prompting import (
-    SQLPrompt,
-)
 from sql_ai.athena.table import Table
 from sql_ai.athena.utils import get_schema_from_athena, run_query
-from sql_ai.bedrock.utils import (
-    call_model_direct,
-    data_to_prompt,
-    wrap_message_in_body,
-)
 from sql_ai.tracking.decorator import track_step_and_log
+from sql_ai.athena.sql_prompting import SQLPrompt
+from sql_ai.app_meta_objects.config import Config
+from sql_ai.athena.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
+from sql_ai.bedrock.bedrock_llm import BedrockService, PromptBody
+
+
+# --- Types -------------------------------------------------------
+@dataclass(frozen=True)
+class SQLResult:
+    sql: str
+    prompt_body: PromptBody
+    format_logs: list[str]
+    error_traceback: str = ""
+
+
+# --- Services ----------------------------------------------------
+
+
+class AthenaService:
+    def __init__(self, client, output_bucket: str, tables: Sequence[Table]):
+        self.client = client
+        self.output_bucket = output_bucket
+        self.tables = tables
+
+    def run_query(self, query: str) -> pd.DataFrame:
+        return run_query(
+            query=query, client=self.client, output_bucket=self.output_bucket
+        )
+
+    @track_step_and_log("🔍 Getting schemas for tables")
+    def populate_schemas(self) -> list[Table]:
+        for t in self.tables:
+            if getattr(t, "schema", None) is None:  # cache if missing
+                t.schema = get_schema_from_athena(
+                    athena_client=self.client, table=t, output_bucket=self.output_bucket
+                )
+        return self.tables
+
+    def format_query(self, sql: str) -> SQLFormattingOutput:
+        return SQLFormatting().format_sql(sql, tables=self.tables)
 
 
 class AthenaLLM:
     def __init__(
         self,
         config: Config,
-        tables: list[Table] = [],
-        sql_prompt: Optional[SQLPrompt] = None,
+        tables: Optional[Sequence["Table"]] = None,
+        sql_prompt: Optional["SQLPrompt"] = None,
+        session: Optional[boto3.Session] = None,
+        athena_client: Optional[object] = None,
+        bedrock_runtime_client: Optional[object] = None,
+        logger: Optional[logging.Logger] = None,
     ):
-        self.tables = tables
+        self.config = config
+        self.tables: list[Table] = list(tables) if tables else []
         self.sql_prompt = sql_prompt or SQLPrompt()
         self.max_sql_generation_retries = 3
 
-        session = boto3.Session(profile_name=config.aws_profile)
-        self.athena_client = session.client(
+        session = session or boto3.Session(profile_name=config.aws_profile)
+        athena_client = athena_client or session.client(
             "athena", region_name=config.aws_region
-        )  # type: ignore
-        self.bedrock_runtime_client = session.client(
+        )
+        bedrock_runtime_client = bedrock_runtime_client or session.client(
             "bedrock-runtime", region_name=config.aws_region
-        )  # type: ignore
-        self.max_tokens = config.max_tokens
-        self.temperature = config.temperature
-        self.aws_athena_output_bucket = config.aws_athena_output_bucket
-        self.model = config.bedrock_model
-
-        assert (
-            self.max_tokens > 0 and self.max_tokens <= 10000
-        ), "max_tokens must be between 1 and 10000"
-
-    @track_step_and_log("sql_question")
-    def sql_question(
-        self, input: str, use_supplied_sql: bool = False
-    ) -> tuple[str, dict, list[str], pd.DataFrame]:
-        """For a given input, generate SQL and run it on Athena.
-        Return the SQL, prompt, format logs and the results (as df)."""
-        sql, prompt, format_logs, _ = self.get_sql(
-            input=input, use_supplied_sql=use_supplied_sql
         )
-        sql_results_df = self.run_athena_query(query=sql)
-        return sql, prompt, format_logs, sql_results_df
 
-    def get_sql(
-        self, input: str, use_supplied_sql: bool = False
-    ) -> tuple[str, dict, list[str], str]:
+        self.athena = AthenaService(
+            athena_client, config.aws_athena_output_bucket, tables=self.tables
+        )
+        self.bedrock = BedrockService(bedrock_runtime_client)
+
+        self.logger = logger or logging.getLogger(__name__)
+
+    def get_sql(self, input: str, use_supplied_sql: bool = False) -> SQLResult:
         if not use_supplied_sql:
-            self._get_schemas_for_tables()
-            sql, prompt, format_logs, error_traceback = self._generate_sql_with_retries(
-                input, max_retries=self.max_sql_generation_retries
-            )
+            self.tables = self.athena.populate_schemas()
+            sql_result = self._generate_sql_with_retries(input)
         else:
-            prompt = {}
-            sql, format_logs, error_traceback = self.sql_prompt.formatter.format_sql(
-                sql=input, tables=self.tables
+            formatting_result = self.athena.format_query(sql=input)
+            sql_result = SQLResult(
+                sql=formatting_result.formatted_sql,
+                prompt_body=None,
+                format_logs=formatting_result.logs,
+                error_traceback=formatting_result.error_trace,
             )
-        return sql, prompt, format_logs, error_traceback
-
-    def run_athena_query(self, query: str) -> pd.DataFrame:
-        return run_query(
-            query=query,
-            client=self.athena_client,
-            output_bucket=self.aws_athena_output_bucket,
-        )
+        return sql_result
 
     @track_step_and_log("✍️ Generating SQL")
-    def _generate_sql_with_retries(
-        self, input: str, max_retries: int = 3
-    ) -> tuple[str, dict, list[str], str]:
-        valid_sql_generation_retries = 0
-        is_valid_sql: bool = False
-        invalid_sql_prompt_additions = ""
-        while valid_sql_generation_retries < max_retries and not is_valid_sql:
-            valid_sql_generation_retries += 1
-            sql, prompt, format_logs, error_traceback, is_valid_sql = self._generate_sql(
-                attempt_number=valid_sql_generation_retries,
-                user_question=input + invalid_sql_prompt_additions,
+    def _generate_sql_with_retries(self, input: str, max_retries: int = 3) -> SQLResult:
+        addition = ""
+        for attempt_number in range(1, max_retries + 1):
+            sql, prompt_body = self.generate_sql(
+                attempt_number=attempt_number,
+                user_question=input + addition,
+                tables=self.tables,
             )
-
-        return sql, prompt, format_logs, error_traceback
-
-    def question_about_data(
-        self, input: str, data: pd.DataFrame, query: Optional[str] = None
-    ) -> tuple[str, dict]:
-        body_prompt = self.body_prompt_from_data(input=input, data=data, query=query)
-        answer = call_model_direct(
-            body=body_prompt,
-            bedrock_runtime_client=self.bedrock_runtime_client,
-            model=self.model,
-        )
-        return answer, body_prompt
-
-    @track_step_and_log("🛠️ Making prompt from data and question")
-    def body_prompt_from_data(
-        self, input: str, data: pd.DataFrame, query: Optional[str] = None
-    ) -> dict:
-        prompt_data = data_to_prompt(data=data)
-        prompt = self._generate_final_answer_prompt(
-            user_question=input, query=query, prompt_data=prompt_data
-        )
-        body_final_prompt = wrap_message_in_body(
-            prompt, max_tokens=self.max_tokens, temperature=0.7, top_p=0.9
-        )
-        return body_final_prompt
-
-    def ensure_is_valid_sql(self, sql: str) -> tuple[bool, str]:
-        starting_words_capitalized = (
-            "SELECT",
-            "INSERT",
-            "UPDATE",
-            "DELETE",
-            "WITH",
-            "SHOW",
-        )
-
-        def looks_like_sql_statement(sql: str) -> bool:
-            sql_upper = sql.strip().upper()
-            return sql_upper.startswith(starting_words_capitalized)
-
-        try:
-            sqlglot.parse_one(sql)
-            assert looks_like_sql_statement(sql), (
-                "Does not appear to be a full SQL statement. ",
-                f"Query must start with one of {', '.join(starting_words_capitalized)}",
+            sql_formatting_result = self.athena.format_query(sql)
+            if not sql_formatting_result.error_trace:
+                break
+            # feed validator reason back to the model for the next try
+            addition = (
+                "\n\nPrevious attempt error to avoid:\n"
+                f"{sql_formatting_result.error_trace}\n"
             )
-            return True, ""
-        except Exception as e:
-            reason = f"⚠️ SQL invalid: {str(e)}"
-            print(reason)
-            return False, reason
+            time.sleep(1)
 
-    @track_step_and_log("🔍 Getting schemas for tables")
-    def _get_schemas_for_tables(self):
-        for table in self.tables:
-            table.schema = get_schema_from_athena(
-                athena_client=self.athena_client,
-                table=table,
-                output_bucket=self.aws_athena_output_bucket,
-            )
+        return SQLResult(
+            sql=sql_formatting_result.formatted_sql,
+            prompt_body=prompt_body,
+            format_logs=sql_formatting_result.logs,
+            error_traceback=sql_formatting_result.error_trace,
+        )
 
     @track_step_and_log(
         lambda self, attempt_number, *_, **__: f"""
-        Generating SQL attempt #{str(attempt_number)}..."""
+        Attempt #{str(attempt_number)}..."""
     )
-    def _generate_sql(
-        self, attempt_number: int, user_question: str
-    ) -> tuple[str, dict, list[str], str, bool]:
-        print("Generating SQL from input:", f'"{user_question}"')
-        sql, prompt, format_logs, error_traceback = self.sql_prompt.generate_sql(
-            user_question=user_question,
-            tables=self.tables,
-            model=self.model,
-            bedrock_runtime_client=self.bedrock_runtime_client,
+    def generate_sql(
+        self, attempt_number: int, user_question: str, tables: Sequence[Table]
+    ) -> tuple[str, PromptBody]:
+        body: PromptBody = self.sql_prompt.build_prompt_body_for_sql(
+            user_question, tables
         )
-        is_valid_sql, reason = self.ensure_is_valid_sql(sql)
-        return sql, prompt, format_logs, error_traceback, is_valid_sql
+        sql: str = self.bedrock.call(
+            body=body,
+            model=self.config.bedrock_model,
+        )
+        return sql, body
 
-    def _generate_final_answer_prompt(
-        self, user_question: str, prompt_data: str, query: Optional[str] = None
+    def question_about_data(
+        self, input: str, data: pd.DataFrame, query: Optional[str] = None
     ):
+        body: PromptBody = self.sql_prompt.build_prompt_body_from_data(
+            user_question=input, data=data
+        )
+        answer: str = self.bedrock.call(body=body, model=self.config.bedrock_model)
+        return answer, body
 
-        if query is None:
-            query = ""
-        else:
-            query = (
-                "\nBased on the following query (which you shouldn't share in "
-                f"the output): {query}\n"
-            )
-
-        prompt = f"""
-You are a helpful data analyst assistant.
-{query}
-Answer the user's question/command:
-
-"{user_question}"
-
-Use the below data in your answer:
-{prompt_data}
-
-IF the answer contains numbers, round to sensible number of decimal places,
- include units if they exist, and choose normal units for the context.
-Show the number part of the answer in bold.
-
-DO NOT TELL US WHAT YOU DID. JUST ANSWER THE QUESTION.
-"""
-        return prompt
+    def run_athena_query(self, query: str) -> pd.DataFrame:
+        return self.athena.run_query(query)

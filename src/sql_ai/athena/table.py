@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Optional, Union
+from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -8,7 +8,7 @@ class Table:
     description: Optional[str] = None
     catalog: Optional[str] = "awsdatacatalog"
     database: str = "default"
-    schema: Union[dict[str, str], list[str]] = field(default_factory=dict)
+    schema: Optional[str] = None
 
     def __post_init__(self):
         if not self.description:

@@ -5,13 +5,13 @@ from sql_ai.bedrock.models import MODEL_REGISTRY, Model
 from sql_ai.utils.utils import find_aws_profile_by_account_id
 
 # Keep this in sync with MODEL_REGISTRY keys
-ModelKey = Literal["claude-3", "claude-3.7"]
+ModelKey = Literal["claude-3", "claude-3.7", "claude-4.5"]
 
 
 @dataclass
 class Config:
     aws_profile: str = ""
-    aws_account_id: str = "688357424058"
+    aws_account_id: str = "382901073838"
     aws_region: str = "eu-west-2"
     aws_athena_s3_output_bucket: str = ""
     aws_athena_catalog: str = "awsdatacatalog"

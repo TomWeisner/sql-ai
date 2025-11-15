@@ -4,7 +4,10 @@ import sys
 import time
 import traceback
 
-import streamlit as st
+try:
+    import streamlit as st  # type: ignore
+except ModuleNotFoundError:  # Streamlit is optional for non-UI contexts.
+    st = None  # type: ignore
 
 
 def neat_prompt(prompt: dict) -> str:
@@ -19,6 +22,9 @@ def neat_prompt(prompt: dict) -> str:
 
 
 def sidebar_typewriter(text: str, speed: float = 0.005):
+    if st is None:
+        print(text)
+        return
     container = st.sidebar.empty()
     typed = ""
     for char in text:
@@ -33,6 +39,9 @@ def print_message(
     role: str = "system",
     should_remember: bool = False,
 ) -> float:
+    if st is None:
+        print(f"[{role}] {message}")
+        return time.time()
     assert role in ["system", "user", "assistant"]
     time_now = time.time()
     msg = {"role": role, "content": message}
@@ -50,6 +59,9 @@ def display_enhanced_traceback(
     user_message: str = "An error occurred.",
     project_identifier: str = "sql_ai.",
 ):
+    if st is None:
+        traceback.print_exc()
+        return
     # 1. Get traceback and format it
     tb = traceback.extract_tb(sys.exc_info()[2])
     formatted_trace = traceback.format_exc()

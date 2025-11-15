@@ -1,12 +1,16 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 
 import boto3
 import pandas as pd
 from botocore.client import BaseClient  # for generic boto3 clients like bedrock-runtime
-from mypy_boto3_athena import AthenaClient
+
+if TYPE_CHECKING:  # pragma: no cover - optional stub dependency
+    from mypy_boto3_athena import AthenaClient
+else:  # allow runtime without the typing extras installed
+    AthenaClient = Any
 
 from sql_ai.athena.athena_service import AthenaService
 from sql_ai.athena.sql_prompting.prompting import SQLPrompt
@@ -37,7 +41,9 @@ class AthenaLLM:
     ):
         self.config = config
         self.tables: list[Table] = list(tables) if tables else []
-        self.sql_prompt = sql_prompt or SQLPrompt(model=config.bedrock_model)
+        self.sql_prompt = sql_prompt or SQLPrompt()
+        # Config drives model selection, so always sync the prompt's model here.
+        self.sql_prompt.model = config.bedrock_model
         self.max_sql_generation_retries = 3
 
         session = session or boto3.Session(profile_name=config.aws_profile)

@@ -1,4 +1,9 @@
-import streamlit
+from __future__ import annotations
+
+try:
+    import streamlit  # type: ignore
+except ModuleNotFoundError:  # Streamlit is optional outside the UI.
+    streamlit = None  # type: ignore
 
 
 def st_if_ctx():
@@ -17,6 +22,8 @@ def st_if_ctx():
 
             get_script_run_ctx = _src.get_script_run_ctx  # type: ignore
 
+        if streamlit is None:
+            return None
         return streamlit if get_script_run_ctx() is not None else None
     except Exception:
         return None

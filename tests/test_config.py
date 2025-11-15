@@ -25,8 +25,8 @@ def custom_config():
 
 
 def test_default_config(default_config):
-    assert default_config.aws_account_id == "688357424058"
-    assert default_config.aws_profile == "personal"
+    assert default_config.aws_account_id == "382901073838"
+    assert default_config.aws_profile == "playground"
     assert default_config.aws_region == "eu-west-2"
     assert default_config.aws_athena_s3_output_bucket == ""
     assert default_config.aws_athena_catalog == "awsdatacatalog"

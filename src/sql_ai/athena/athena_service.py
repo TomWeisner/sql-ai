@@ -1,10 +1,14 @@
 import re
 import time
-from typing import Any, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Optional, Sequence
 
 import boto3
 import pandas as pd
-from mypy_boto3_athena import AthenaClient
+
+if TYPE_CHECKING:  # pragma: no cover
+    from mypy_boto3_athena import AthenaClient
+else:
+    AthenaClient = Any
 
 from sql_ai.athena.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
 from sql_ai.athena.table import Table

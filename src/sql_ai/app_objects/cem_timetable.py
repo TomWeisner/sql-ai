@@ -1,3 +1,5 @@
+from typing import cast
+
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting.prompting import (
     SQLPrompt,
@@ -43,9 +45,6 @@ custom_guidelines = """
 
 
 class CEMPrompt(SQLPrompt):
-    def __init__(self):
-        super().__init__(model=CEMConfig.bedrock_model)
-
     def additional_guidelines(self):
         return custom_guidelines
 
@@ -58,6 +57,8 @@ CEMConfig = Config(
     bedrock_model_key="claude-3.7",
     max_tokens=2000,
     temperature=0.9,
+    aws_athena_catalog=cast(str, cem_timetable_table.catalog),
+    aws_athena_database=cem_timetable_table.database,
 )
 
 CEMLLM = AthenaLLM(

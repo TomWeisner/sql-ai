@@ -20,7 +20,10 @@ claude_3_model = Model(name="Claude 3", id="anthropic.claude-3-sonnet-20240229-v
 
 claude_37_model = Model(name="Claude 3.7", id="anthropic.claude-3-7-sonnet-20250219-v1:0")
 
+claude_45_model = Model(name="Claude 4.5", id="anthropic.claude-haiku-4-5-20251001-v1:0")
+
 MODEL_REGISTRY = {
     "claude-3": claude_3_model,
     "claude-3.7": claude_37_model,
+    "claude-4.5": claude_45_model,
 }

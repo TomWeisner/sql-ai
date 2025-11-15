@@ -1,5 +1,7 @@
 """ "defines objects for pixar films LLM"""
 
+from typing import cast
+
 from sql_ai.athena.athena_llm import AthenaLLM
 from sql_ai.athena.sql_prompting.prompting import (
     SQLPrompt,
@@ -22,9 +24,6 @@ custom_guidelines = """
 
 
 class PixarFilmsPrompt(SQLPrompt):
-    def __init__(self):
-        super().__init__(model=PixarConfig.bedrock_model)
-
     def additional_guidelines(self):
         return custom_guidelines
 
@@ -37,6 +36,8 @@ PixarConfig = Config(
     bedrock_model_key="claude-3.7",
     max_tokens=2000,
     temperature=0.9,
+    aws_athena_catalog=cast(str, pixar_films_table.catalog),
+    aws_athena_database=pixar_films_table.database,
 )
 
 PixarLLM = AthenaLLM(

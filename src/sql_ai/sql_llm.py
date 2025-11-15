@@ -1,22 +1,17 @@
 import logging
 import time
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Optional, Sequence
+from typing import Optional
 
 import boto3
 import pandas as pd
-from botocore.client import BaseClient  # for generic boto3 clients like bedrock-runtime
+from botocore.client import BaseClient
 
-if TYPE_CHECKING:  # pragma: no cover - optional stub dependency
-    from mypy_boto3_athena import AthenaClient
-else:  # allow runtime without the typing extras installed
-    AthenaClient = Any
-
-from sql_ai.athena.athena_service import AthenaService
-from sql_ai.athena.sql_prompting.prompting import SQLPrompt
-from sql_ai.athena.table import Table
 from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
 from sql_ai.config import Config
+from sql_ai.sql_backend.base import SqlBackend
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_prompting.prompting import SQLPrompt
 from sql_ai.tracking.decorator import track_step_and_log
 
 
@@ -28,51 +23,45 @@ class SQLResult:
     error_traceback: str = ""
 
 
-class AthenaLLM:
+class SqlLLM:
     def __init__(
         self,
         config: Config,
-        tables: Optional[Sequence["Table"]] = None,
-        sql_prompt: Optional["SQLPrompt"] = None,
-        session: Optional[boto3.Session] = None,
-        athena_client: Optional[AthenaClient] = None,
+        backend: SqlBackend,
+        sql_prompt: Optional[SQLPrompt] = None,
         bedrock_runtime_client: Optional[BaseClient] = None,
+        session: Optional[boto3.Session] = None,
         logger: Optional[logging.Logger] = None,
     ):
         self.config = config
-        self.tables: list[Table] = list(tables) if tables else []
-        self.sql_prompt = sql_prompt or SQLPrompt()
-        # Config drives model selection, so always sync the prompt's model here.
+        self.backend = backend
+        self.tables: list[Table] = backend.tables
+        if sql_prompt:
+            self.sql_prompt = sql_prompt
+        else:
+            self.sql_prompt = SQLPrompt(
+                general_context_template=backend.prompt_context_template,
+                general_guidelines=backend.prompt_guidelines,
+            )
+        self.sql_prompt.general_context_template = backend.prompt_context_template
+        self.sql_prompt.general_guidelines_text = backend.prompt_guidelines
         self.sql_prompt.model = config.bedrock_model
         self.max_sql_generation_retries = 3
 
         session = session or boto3.Session(profile_name=config.aws_profile)
-        athena_client = athena_client or session.client(
-            "athena", region_name=config.aws_region
-        )
         bedrock_runtime_client = bedrock_runtime_client or session.client(
             "bedrock-runtime", region_name=config.aws_region
         )
 
-        self.athena = AthenaService(
-            output_bucket=config.aws_athena_s3_output_bucket,
-            tables=self.tables,
-            client=athena_client,
-            database=config.aws_athena_database,
-            catalog=config.aws_athena_catalog,
-            aws_profile=config.aws_profile,
-            aws_region=config.aws_region,
-        )
         self.bedrock = BedrockService(bedrock_runtime_client)
-
         self.logger = logger or logging.getLogger(__name__)
 
     def get_sql(self, input: str, use_supplied_sql: bool = False) -> SQLResult:
         if not use_supplied_sql:
-            self.tables = self.athena.populate_schemas()
+            self.tables = list(self.backend.populate_schemas())
             sql_result = self._generate_sql_with_retries(input)
         else:
-            formatting_result = self.athena.format_query(sql=input)
+            formatting_result = self.backend.format_query(sql=input)
             sql_result = SQLResult(
                 sql=formatting_result.formatted_sql,
                 prompt_body=None,
@@ -89,10 +78,9 @@ class AthenaLLM:
                 attempt_number=attempt_number,
                 user_question=input + addition,
             )
-            sql_formatting_result = self.athena.format_query(sql)
+            sql_formatting_result = self.backend.format_query(sql)
             if not sql_formatting_result.error_trace:
                 break
-            # feed validator reason back to the model for the next try
             addition = (
                 "\n\nPrevious attempt error to avoid:\n"
                 f"{sql_formatting_result.error_trace}\n"
@@ -115,10 +103,7 @@ class AthenaLLM:
         body: PromptBody = self.sql_prompt.build_prompt_body_for_sql(
             user_question=user_question, tables=self.tables
         )
-        sql: str = self.bedrock.call(
-            body=body,
-            model=self.config.bedrock_model,
-        )
+        sql: str = self.bedrock.call(body=body, model=self.config.bedrock_model)
         return sql, body
 
     def question_about_data(
@@ -130,5 +115,5 @@ class AthenaLLM:
         answer: str = self.bedrock.call(body=body, model=self.config.bedrock_model)
         return answer, body
 
-    def run_athena_query(self, query: str) -> pd.DataFrame:
-        return self.athena.run_query(query)
+    def run_query(self, query: str) -> pd.DataFrame:
+        return self.backend.run_query(query)

@@ -2,12 +2,14 @@
 
 from typing import cast
 
-from sql_ai.athena.athena_llm import AthenaLLM
-from sql_ai.athena.sql_prompting.prompting import (
+from sql_ai.athena.athena_backend import AthenaBackend
+from sql_ai.athena.prompt_defaults import ATHENA_CONTEXT_TEMPLATE, ATHENA_GUIDELINES
+from sql_ai.config import Config
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_llm import SqlLLM
+from sql_ai.sql_prompting.prompting import (
     SQLPrompt,
 )
-from sql_ai.athena.table import Table
-from sql_ai.config import Config
 
 # data downloaded here: https://erictleung.com/pixarfilms/
 
@@ -24,6 +26,12 @@ custom_guidelines = """
 
 
 class PixarFilmsPrompt(SQLPrompt):
+    def __init__(self):
+        super().__init__(
+            general_context_template=ATHENA_CONTEXT_TEMPLATE,
+            general_guidelines=ATHENA_GUIDELINES,
+        )
+
     def additional_guidelines(self):
         return custom_guidelines
 
@@ -40,8 +48,17 @@ PixarConfig = Config(
     aws_athena_database=pixar_films_table.database,
 )
 
-PixarLLM = AthenaLLM(
+PixarBackend = AthenaBackend(
+    output_bucket=PixarConfig.aws_athena_s3_output_bucket,
     tables=[pixar_films_table],
+    database=PixarConfig.aws_athena_database,
+    catalog=PixarConfig.aws_athena_catalog,
+    aws_profile=PixarConfig.aws_profile,
+    aws_region=PixarConfig.aws_region,
+)
+
+PixarLLM = SqlLLM(
+    backend=PixarBackend,
     sql_prompt=PixarFilmsPrompt(),
     config=PixarConfig,
 )

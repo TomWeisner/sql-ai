@@ -1,7 +1,7 @@
 """
 Streamlit app for running a chatbot with Bedrock.
 
-This app uses our Athena LLM class to generate SQL queries.
+This app uses our SQL LLM class to generate SQL queries.
 
 Run the app with the below from the project root:
 streamlit run src/sql_ai/streamlit/app.py
@@ -14,7 +14,7 @@ import streamlit as st
 
 from sql_ai.app_objects.cem_timetable import CEMLLM
 from sql_ai.app_objects.pixar_films import PixarLLM
-from sql_ai.athena.athena_llm import AthenaLLM
+from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
     set_title_top_padding,
@@ -32,7 +32,7 @@ logging.getLogger("streamlit.runtime.scriptruncontext").setLevel(logging.ERROR)
 
 
 class ChatbotApp:
-    def __init__(self, athena_llm: AthenaLLM, title: str, default_question: str = ""):
+    def __init__(self, athena_llm: SqlLLM, title: str, default_question: str = ""):
         self.llm = athena_llm
         self.title = title
         self.default_question = default_question
@@ -127,8 +127,10 @@ class ChatbotApp:
             if sql_result.error_traceback:
                 st.error(sql_result.error_traceback)
 
-            with track_step_and_log_cm("⚙️ Running SQL query on Athena..."):
-                df = self.llm.run_athena_query(sql_result.sql)
+            with track_step_and_log_cm(
+                f"⚙️ Running SQL query on {self.llm.backend.name}..."
+            ):
+                df = self.llm.run_query(sql_result.sql)
                 st.session_state.results_df = df
 
             with track_step_and_log_cm("⏳ Generating answer..."):

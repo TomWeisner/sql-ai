@@ -38,7 +38,7 @@ Then, in a terminal make your working directory the root of the project and run:
 
 The `src/sql_ai/athena` directory is concerned with running LLMs on structured data stored in Athena databases
 
-The AthenaLLM class handles input questions to return an Athena compliant query
+The `SqlLLM` class handles input questions to return an Athena compliant query
 
 It beings by building a prompt from the:
 1. input question
@@ -52,7 +52,7 @@ The generated SQL query is passed through various Formatting steps:
 
 This SQL is then ran on Athena.
 
-Assuming successful return of an answer, the AthenaLLM class converts the returned data to a string and 
+Assuming successful return of an answer, the SqlLLM class converts the returned data to a string and 
 uses this as context to a re run of the LLM.
 
 If the SQL generation/use fails then the process repeats until either max retries is
@@ -70,4 +70,4 @@ Athena LLM class process flow:
 ## Building SQL
 
 SQL Prompt class process flow:
-![SQL Prompt class](src/sql_ai/athena/sql_prompting.excalidraw.png)
+![SQL Prompt class](src/sql_ai/sql_prompting/prompting.excalidraw.png)

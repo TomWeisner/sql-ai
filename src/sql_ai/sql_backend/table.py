@@ -29,18 +29,15 @@ class Table:
             self.schema = dict_schema
 
     def qualified_name(self):
-        """athena query syntax"""
-        # when dealing with WITH tables we will use _ for the database
+        """dialect-specific qualified identifier."""
         if self.database == "_":
             return self.name
-        # when dealing with metadata queries against information_schema
-        # we will use _ for the catalog
-        elif self.catalog == "_":
+        if self.catalog == "_":
             return f'"{self.database}"."{self.name}"'
         return f'"{self.catalog}"."{self.database}"."{self.name}"'
 
     def qualified_name_hive_syntax(self):
-        """hive query syntax - used when running `show create table...`"""
+        """Hive query syntax - used when running `show create table...`."""
         return f"`{self.catalog}`.`{self.database}`.`{self.name}`"
 
     def context(self):

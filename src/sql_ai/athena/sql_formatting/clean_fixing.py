@@ -11,10 +11,8 @@ from sql_ai.athena.allowed_objects.functions import (
     athena_datetime_literals,
     common_function_conversions,
 )
-from sql_ai.athena.sql_formatting.clean_base import (
-    SQLCleaning,
-)
-from sql_ai.athena.table import Table
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_formatting.clean_base import SQLCleaning
 
 
 class SQLAthenaCompliance(SQLCleaning):

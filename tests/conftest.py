@@ -6,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sql_ai.athena.table import Table
+from sql_ai.sql_backend.table import Table
 
 # Add `src/` and `tests/` to sys.path if not already present
 BASE_DIR = Path(__file__).resolve().parent.parent

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 import time
 from typing import TYPE_CHECKING, Any, Optional, Sequence
@@ -5,17 +7,25 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
+from sql_ai.athena.prompt_defaults import ATHENA_CONTEXT_TEMPLATE, ATHENA_GUIDELINES
+from sql_ai.athena.sql_formatting.clean_fixing import SQLAthenaCompliance
+from sql_ai.athena.sql_formatting.clean_standardising import SQLStandards
+from sql_ai.sql_backend.base import SqlBackend
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
+from sql_ai.tracking.decorator import track_step_and_log
+
 if TYPE_CHECKING:  # pragma: no cover
     from mypy_boto3_athena import AthenaClient
 else:
     AthenaClient = Any
 
-from sql_ai.athena.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
-from sql_ai.athena.table import Table
-from sql_ai.tracking.decorator import track_step_and_log
 
+class AthenaBackend(SqlBackend):
+    """Implementation of SqlBackend that talks to AWS Athena."""
 
-class AthenaService:
+    name = "Athena"
+
     def __init__(
         self,
         output_bucket: str,
@@ -37,11 +47,33 @@ class AthenaService:
         self.database = database
         self.catalog = catalog
         self.wait_poll_interval = wait_poll_interval
-
-    # ---------- Public API ----------
+        self.sql_formatter = SQLFormatting(
+            [
+                ("Athena fixing", SQLAthenaCompliance()),
+                ("SQL standards", SQLStandards()),
+            ],
+            metadata_describer=self,
+        )
+        self.prompt_context_template = ATHENA_CONTEXT_TEMPLATE
+        self.prompt_guidelines = ATHENA_GUIDELINES
 
     def format_query(self, sql: str) -> SQLFormattingOutput:
-        return SQLFormatting().format_sql(sql, tables=self.tables)
+        return self.sql_formatter.format_sql(sql, tables=self.tables)
+
+    def describe_metadata_tables(self, sql: str, tables: list[Table]) -> list[Table]:
+        if '"information_schema"."columns"' in sql:
+            description = (
+                "Metadata about columns in tables. "
+                "Note metadata is not a real catalog."
+            )
+            metadata_table = Table(
+                database="information_schema",
+                name="columns",
+                catalog="_",
+                description=description,
+            )
+            tables.append(metadata_table)
+        return tables
 
     def run_query(self, query: str, limit: Optional[int] = None) -> pd.DataFrame:
         rows = self._fetch_results(query=query, limit=limit)
@@ -68,7 +100,6 @@ class AthenaService:
         return "\n".join((row[0] or "") for row in rows[1:])
 
     def get_schema_from_athena(self, table: Table) -> str:
-        """Extract raw DDL from Athena and strip lines that don't help SQL generation."""
         if not table.name:
             raise ValueError("Table name is required")
         if not table.database:
@@ -108,8 +139,6 @@ class AthenaService:
             .strip()
         )
 
-    # ---------- Internals ----------
-
     def _fetch_results(
         self, *, query: str, limit: Optional[int] = None
     ) -> list[list[Any]]:
@@ -124,7 +153,6 @@ class AthenaService:
         print(f"Query execution started: {resp['QueryExecutionId']}")
         execution_id = resp["QueryExecutionId"]
 
-        # Poll for completion
         while True:
             qexec = self.client.get_query_execution(QueryExecutionId=execution_id)
             status = qexec["QueryExecution"]["Status"]["State"]
@@ -140,7 +168,6 @@ class AthenaService:
                 f"Athena query failed with status: {status}\nReason: {reason}"
             )
 
-        # Paginate results
         rows: list[list[Any]] = []
         next_token: Optional[str] = None
         first_page = True

@@ -1,17 +1,14 @@
 import re
 from dataclasses import dataclass
+from typing import Protocol, Sequence, Tuple
 
-from sql_ai.athena.sql_formatting.clean_base import (
-    SQLCleaning,
-)
-from sql_ai.athena.sql_formatting.clean_fixing import (
-    SQLAthenaCompliance,
-)
-from sql_ai.athena.sql_formatting.clean_standardising import (
-    SQLStandards,
-)
-from sql_ai.athena.table import Table
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_formatting.clean_base import SQLCleaning
 from sql_ai.tracking.decorator import track_step_and_log
+
+
+class MetadataDescriber(Protocol):
+    def describe_metadata_tables(self, sql: str, tables: list[Table]) -> list[Table]: ...
 
 
 @dataclass
@@ -22,7 +19,15 @@ class SQLFormattingOutput:
 
 
 class SQLFormatting:
-    """Formatting logic (hand holding) for supplied SQL queries"""
+    """Formatting logic (hand holding) for supplied SQL queries."""
+
+    def __init__(
+        self,
+        formatters: Sequence[Tuple[str, SQLCleaning]] | None = None,
+        metadata_describer: "MetadataDescriber | None" = None,
+    ):
+        self.formatters: list[tuple[str, SQLCleaning]] = list(formatters or [])
+        self.metadata_describer = metadata_describer
 
     @track_step_and_log("🎨 Formatting SQL")
     def format_sql(self, sql: str, tables: list[Table]) -> SQLFormattingOutput:
@@ -53,18 +58,14 @@ class SQLFormatting:
         error_trace = ""
 
         tables = self._find_generated_with_tables(sql, tables)
-        tables = self._find_information_schema_tables(sql, tables)
+        if self.metadata_describer:
+            tables = self.metadata_describer.describe_metadata_tables(sql, tables)
 
         sql = self._remove_encapsulating_quotes(sql)
 
         self.format_logs = ["Originally generated SQL:\n\n" + sql]
 
-        formatters: dict[str, SQLCleaning] = {
-            "Athena fixing": SQLAthenaCompliance(),
-            "SQL standards": SQLStandards(),
-        }
-
-        for formatter_action, formatter in formatters.items():
+        for formatter_action, formatter in self.formatters:
             print(f"Applying {formatter_action}")
             if error_trace:
                 break
@@ -109,25 +110,6 @@ class SQLFormatting:
             )
             tables.append(new_table)
 
-        return tables
-
-    def _find_information_schema_tables(
-        self, sql: str, tables: list[Table]
-    ) -> list[Table]:
-        """Find any references to information_schema.columns in
-        the query and add it to the list of tables if found"""
-        if '"information_schema"."columns"' in sql:
-            description = (
-                "Metadata about columns in tables. "
-                "Note metadata is not a real catalog."
-            )
-            metadata_table = Table(
-                database="information_schema",
-                name="columns",
-                catalog="_",
-                description=description,
-            )
-            tables.append(metadata_table)
         return tables
 
     def _remove_encapsulating_quotes(self, sql: str) -> str:

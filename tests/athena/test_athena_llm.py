@@ -1,9 +1,9 @@
 from unittest.mock import MagicMock
 
-from sql_ai.athena.athena_llm import AthenaLLM
-from sql_ai.athena.sql_prompting.prompting import SQLPrompt
 from sql_ai.bedrock.models import MODEL_REGISTRY
 from sql_ai.config import Config, ModelKey
+from sql_ai.sql_llm import SqlLLM
+from sql_ai.sql_prompting.prompting import SQLPrompt
 
 
 def _make_config(model_key: ModelKey = "claude-4.5") -> Config:
@@ -21,15 +21,17 @@ def _make_config(model_key: ModelKey = "claude-4.5") -> Config:
 def test_sql_prompt_model_follows_config_choice():
     """Custom prompts should use the Config-selected Bedrock model."""
     config = _make_config()
-    custom_prompt = SQLPrompt()
+    custom_prompt = SQLPrompt("ctx {}", "guidelines")
     custom_prompt.model = MODEL_REGISTRY["claude-3"]
 
-    llm = AthenaLLM(
+    backend = MagicMock()
+    backend.tables = []
+
+    llm = SqlLLM(
         config=config,
-        tables=[],
+        backend=backend,
         sql_prompt=custom_prompt,
         session=MagicMock(),
-        athena_client=MagicMock(),
         bedrock_runtime_client=MagicMock(),
     )
 
@@ -39,11 +41,16 @@ def test_sql_prompt_model_follows_config_choice():
 def test_bedrock_call_receives_config_model():
     """BedrockService should be invoked with the Config-selected model."""
     config = _make_config()
-    llm = AthenaLLM(
+    backend = MagicMock()
+    backend.tables = []
+    backend.format_query.return_value = MagicMock(
+        formatted_sql="SELECT 1", logs=[], error_trace=""
+    )
+
+    llm = SqlLLM(
         config=config,
-        tables=[],
+        backend=backend,
         session=MagicMock(),
-        athena_client=MagicMock(),
         bedrock_runtime_client=MagicMock(),
     )
 

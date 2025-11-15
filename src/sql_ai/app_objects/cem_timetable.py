@@ -1,11 +1,11 @@
 from typing import cast
 
-from sql_ai.athena.athena_llm import AthenaLLM
-from sql_ai.athena.sql_prompting.prompting import (
-    SQLPrompt,
-)
-from sql_ai.athena.table import Table
+from sql_ai.athena.athena_backend import AthenaBackend
+from sql_ai.athena.prompt_defaults import ATHENA_CONTEXT_TEMPLATE, ATHENA_GUIDELINES
 from sql_ai.config import Config
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_llm import SqlLLM
+from sql_ai.sql_prompting.prompting import SQLPrompt
 
 # define table
 cem_timetable_table = Table(
@@ -45,6 +45,12 @@ custom_guidelines = """
 
 
 class CEMPrompt(SQLPrompt):
+    def __init__(self):
+        super().__init__(
+            general_context_template=ATHENA_CONTEXT_TEMPLATE,
+            general_guidelines=ATHENA_GUIDELINES,
+        )
+
     def additional_guidelines(self):
         return custom_guidelines
 
@@ -61,8 +67,17 @@ CEMConfig = Config(
     aws_athena_database=cem_timetable_table.database,
 )
 
-CEMLLM = AthenaLLM(
+CEMBackend = AthenaBackend(
+    output_bucket=CEMConfig.aws_athena_s3_output_bucket,
     tables=[cem_timetable_table],
+    database=CEMConfig.aws_athena_database,
+    catalog=CEMConfig.aws_athena_catalog,
+    aws_profile=CEMConfig.aws_profile,
+    aws_region=CEMConfig.aws_region,
+)
+
+CEMLLM = SqlLLM(
+    backend=CEMBackend,
     sql_prompt=CEMPrompt(),
     config=CEMConfig,
 )

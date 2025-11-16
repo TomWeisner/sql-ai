@@ -2,22 +2,20 @@ import difflib
 import re
 from typing import Callable
 
-from sql_ai.athena.clean_sql.cleaning_sql import (
-    SQLCleaning,
-)
-from sql_ai.athena.datatypes_list import (
+from sql_ai.athena.allowed_objects.datatypes import (
     athena_allowed_datatypes,
     common_datatype_conversions,
 )
-from sql_ai.athena.functions_list import (
+from sql_ai.athena.allowed_objects.functions import (
     allowed_athena_functions,
     athena_datetime_literals,
     common_function_conversions,
 )
-from sql_ai.athena.table import Table
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_formatting.clean_base import SQLCleaning
 
 
-class SQLAthena(SQLCleaning):
+class SQLAthenaCompliance(SQLCleaning):
     """Fix SQL queries to Athena specifications. This class is an
     implementation of the SQLCleaning class, and so has the same
     methods controlling the SQL cleaning. Additionally, it has methods

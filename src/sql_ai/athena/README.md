@@ -1,20 +1,12 @@
-# Athena based LLMs
+# Athena directory
 
-This directory is concerned with running LLMs on structured data stored in Athena databases
+This directory holds everything that is specific to AWS Athena as a backend:
+- allowed objects lists
+- formatting rules
+- prompt defaults
+- `AthenaBackend` sql engine implementation.
 
-The AthenaLLM class handles prompts. In turn this calls the SQLPrompt class, which can be custom implemented
-with child classes if looking to provide additional/custom guidelines/context on how to build SQL queries.
-
-## Class relationships
-
-![Athena LLM classes](classes.excalidraw.png)
-
-## Answering user questions
-
-Athena LLM class process flow:
-![Athena LLM class](athena_llm.excalidraw.png)
-
-## Building SQL
-
-SQL Prompt class process flow:
-![SQL Prompt class](sql_prompting.excalidraw.png)
+If you need to tweak how we talk to Athena (different regions, compliance rules, etc.)
+this is the place to do it.  
+It intentionally contains no app logic; the rest of the project consumes Athena through
+the backend abstraction in `sql_backend`.

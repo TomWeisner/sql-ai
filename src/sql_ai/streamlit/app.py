@@ -1,22 +1,24 @@
 """
 Streamlit app for running a chatbot with Bedrock.
 
-This app uses our Athena LLM class to generate SQL queries.
+This app uses our SQL LLM class to generate SQL queries.
 
 Run the app with the below from the project root:
 streamlit run src/sql_ai/streamlit/app.py
 """
 
+import logging
 from datetime import datetime
 
 import streamlit as st
 
-from sql_ai.athena.athena_llm import AthenaLLM
+from sql_ai.app_objects.cem_timetable import CEMLLM
+from sql_ai.app_objects.pixar_films import PixarLLM
+from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.css_utils import (
     set_sidebar_width_and_center_content,
     set_title_top_padding,
 )
-from sql_ai.streamlit.pixar_films import PixarLLM
 from sql_ai.streamlit.utils import (
     display_enhanced_traceback,
     neat_prompt,
@@ -24,9 +26,13 @@ from sql_ai.streamlit.utils import (
 )
 from sql_ai.tracking.decorator import track_step_and_log, track_step_and_log_cm
 
+# Suppress Streamlit-specific warnings/logs
+logging.getLogger("streamlit").setLevel(logging.ERROR)
+logging.getLogger("streamlit.runtime.scriptruncontext").setLevel(logging.ERROR)
+
 
 class ChatbotApp:
-    def __init__(self, athena_llm: AthenaLLM, title: str, default_question: str = ""):
+    def __init__(self, athena_llm: SqlLLM, title: str, default_question: str = ""):
         self.llm = athena_llm
         self.title = title
         self.default_question = default_question
@@ -95,36 +101,36 @@ class ChatbotApp:
         try:
             if use_supplied_sql:
                 with track_step_and_log_cm("📥 Using user-supplied SQL..."):
-                    sql_query, format_logs, traceback = (
-                        self.llm.sql_prompt.formatter.format_sql(
-                            question, tables=self.llm.tables
-                        )
+                    sql_result = self.llm.get_sql(
+                        question, use_supplied_sql=use_supplied_sql
                     )
 
             else:
                 with track_step_and_log_cm("🧠 Converting natural language to SQL..."):
-                    sql_query, sql_prompt, format_logs, traceback = self.llm.get_sql(
-                        question, use_supplied_sql
+                    sql_result = self.llm.get_sql(
+                        question, use_supplied_sql=use_supplied_sql
                     )
                     st.session_state.update(
                         {
-                            "sql_prompt": neat_prompt(sql_prompt),
+                            "sql_prompt": neat_prompt(sql_result.prompt_body),
                         }
                     )
 
             st.session_state.update(
                 {
-                    "sql_query": sql_query,
-                    "format_logs": "\n".join(format_logs),
-                    "error_traceback": traceback,
+                    "sql_query": sql_result.sql,
+                    "format_logs": "\n".join(sql_result.format_logs),
+                    "error_traceback": sql_result.error_traceback,
                 }
             )
 
-            if traceback:
-                st.error(traceback)
+            if sql_result.error_traceback:
+                st.error(sql_result.error_traceback)
 
-            with track_step_and_log_cm("⚙️ Running SQL query on Athena..."):
-                df = self.llm.run_athena_query(sql_query)
+            with track_step_and_log_cm(
+                f"⚙️ Running SQL query on {self.llm.backend.name}..."
+            ):
+                df = self.llm.run_query(sql_result.sql)
                 st.session_state.results_df = df
 
             with track_step_and_log_cm("⏳ Generating answer..."):
@@ -156,7 +162,7 @@ class ChatbotApp:
     @track_step_and_log("**Processing user input**")
     def _handle_question(self, question, keep_context, use_supplied_sql):
         self._clear_previous_variables_and_rewrite_messages(question, keep_context)
-        with st.spinner("Generating answer..."):
+        with st.spinner(f"Generating answer... ({self.llm.config.bedrock_model.name})"):
             self._handle_question_actual(question, use_supplied_sql)
 
     def _render_tabs(self):
@@ -245,12 +251,22 @@ class ChatbotApp:
 
 
 if __name__ == "__main__":
-    question = "avg length of film?"
-
-    CB = ChatbotApp(
-        athena_llm=PixarLLM,
-        title="Pixar",
-        default_question=question,
-    )
+    use_cem = True
+    if use_cem:
+        question = (
+            "on avg how many trains stop at peterborough each day over the last week?"
+        )
+        CB = ChatbotApp(
+            athena_llm=CEMLLM,
+            title="CEM Timetable",
+            default_question=question,
+        )
+    else:
+        question = "avg length of film?"
+        CB = ChatbotApp(
+            athena_llm=PixarLLM,
+            title="Pixar",
+            default_question=question,
+        )
 
     CB.run()

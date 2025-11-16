@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Callable, Optional, Union
 
+from sql_ai.streamlit.safe import st_if_ctx
 from sql_ai.streamlit.utils import sidebar_typewriter
 from sql_ai.tracking.step import (
     Step,
@@ -41,15 +42,24 @@ def resolve_step_name(
     return name
 
 
+def _write_line(text: str, speed: float):
+    print(text)
+    if st_if_ctx() is not None:
+        sidebar_typewriter(text=text, speed=speed)
+
+
 @contextmanager
 def track_step_and_log_cm(start_message: Union[str, Callable], end_message: str = ""):
     resolved_name = resolve_step_name(start_message)
     step = Step(start_msg="▶️  " + resolved_name)
     step_tracker.push(step)
+
     speed = 0.001
     if step.level == 1:
         speed = 0
-    sidebar_typewriter(text=log_step_starting(step), speed=speed)
+
+    _write_line(log_step_starting(step), speed)
+
     success = True
     try:
         yield
@@ -60,12 +70,9 @@ def track_step_and_log_cm(start_message: Union[str, Callable], end_message: str 
         step.timer.stop_timer()
         step_tracker.pop()
         emoji = "✅" if success else "❌"
-        if not end_message:
-            end_message = f"{emoji} " + resolved_name
-        step.end_msg = end_message
-        log_lines = log_unlogged_steps(step)
-        for line in log_lines:
-            sidebar_typewriter(text=line, speed=0.001)
+        step.end_msg = end_message or f"{emoji} {resolved_name}"
+        for line in log_unlogged_steps(step):
+            _write_line(line, 0.001)
 
 
 def track_step_and_log(start_message: Union[str, Callable], end_message: str = ""):
@@ -75,29 +82,27 @@ def track_step_and_log(start_message: Union[str, Callable], end_message: str = "
             resolved_name = resolve_step_name(start_message, args=args, kwargs=kwargs)
             step = Step(start_msg="▶️  " + resolved_name)
             step_tracker.push(step)
+
             speed = 0.001
             if step.level == 1:
                 speed = 0
-            sidebar_typewriter(text=log_step_starting(step), speed=speed)
+
+            _write_line(log_step_starting(step), speed)
             success = True
             try:
                 result = fn(*args, **kwargs)
-                # Detect success flag in last return item (optional pattern)
                 if isinstance(result, tuple) and isinstance(result[-1], bool):
-                    *output_values, success = result
+                    *_, success = result
             except Exception:
                 success = False
                 raise
-
             finally:
                 step.timer.stop_timer()
                 step_tracker.pop()
                 emoji = "✅" if success else "❌"
-                final_msg = end_message or f"{emoji} {resolved_name}"
-                step.end_msg = final_msg
-                log_lines = log_unlogged_steps(step)
-                for line in log_lines:
-                    sidebar_typewriter(text=line, speed=0.001)
+                step.end_msg = end_message or f"{emoji} {resolved_name}"
+                for line in log_unlogged_steps(step):
+                    _write_line(line, 0.001)
             return result
 
         return wrapper

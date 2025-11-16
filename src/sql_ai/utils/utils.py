@@ -59,8 +59,14 @@ def get_all_files_in_directory(
 
 
 # Search AWS profiles for matching account
-def find_aws_profile_by_account_id(target_account_id: str = "382901073838"):
+def find_aws_profile_by_account_id(target_account_id: str = "688357424058") -> str:
+    print(
+        "Searching AWS profiles for account ID:",
+        target_account_id,
+        Session().available_profiles,
+    )
     for profile in Session().available_profiles:
+        print(f"Checking AWS profile: {profile}")
         session = boto3.Session(profile_name=profile)
         try:
             sts = session.client("sts")

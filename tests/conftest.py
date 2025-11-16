@@ -1,19 +1,19 @@
+# flake8: noqa
 # tests/conftest.py
 import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
-from sql_ai.sql_backend.table import Table
-
-# Add `src/` and `tests/` to sys.path if not already present
 BASE_DIR = Path(__file__).resolve().parent.parent
 for subdir in ["src", "tests"]:
     path = str(BASE_DIR / subdir)
     if path not in sys.path:
         sys.path.insert(0, path)
+
+import pytest
+
+from sql_ai.sql_backend.table import Table
 
 
 def pytest_runtest_setup(item):

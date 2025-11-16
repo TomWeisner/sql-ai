@@ -6,7 +6,7 @@ from sql_ai.config import Config
 
 @pytest.fixture
 def default_config(monkeypatch):
-    monkeypatch.setenv("SQL_AI_AWS_PROFILE_382901073838", "playground")
+    monkeypatch.setenv("SQL_AI_FAKE_AWS_PROFILE", "playground")
     return Config()
 
 

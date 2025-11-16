@@ -27,8 +27,11 @@ class Config:
     def __post_init__(self):
         if not self.aws_profile:
             env_profile = os.getenv(f"SQL_AI_AWS_PROFILE_{self.aws_account_id}")
-            self.aws_profile = env_profile or find_aws_profile_by_account_id(
-                self.aws_account_id
+            env_profile = env_profile or os.getenv("SQL_AI_DEFAULT_AWS_PROFILE")
+            self.aws_profile = (
+                env_profile
+                or os.getenv("SQL_AI_FAKE_AWS_PROFILE")
+                or find_aws_profile_by_account_id(self.aws_account_id)
             )
 
         try:

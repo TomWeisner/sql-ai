@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -24,9 +25,11 @@ class Config:
     temperature: float = 0.9
 
     def __post_init__(self):
-        self.aws_profile = self.aws_profile or find_aws_profile_by_account_id(
-            self.aws_account_id
-        )
+        if not self.aws_profile:
+            env_profile = os.getenv(f"SQL_AI_AWS_PROFILE_{self.aws_account_id}")
+            self.aws_profile = env_profile or find_aws_profile_by_account_id(
+                self.aws_account_id
+            )
 
         try:
             self.bedrock_model = MODEL_REGISTRY[self.bedrock_model_key]

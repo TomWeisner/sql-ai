@@ -58,3 +58,29 @@ jobs:
         run: |
           source .venv/bin/activate
           nox
+      
+      #----------------------------------------------
+      #              run code coverage
+      #----------------------------------------------
+      # Sanity check: ensure pytest-cov is importable before running tests
+      - name: Sanity check pytest-cov installed
+        run: poetry run python -c "import pytest_cov; print('pytest-cov OK')"
+
+      # Run tests and generate coverage.xml for Codecov
+      - name: Run tests & create coverage.xml
+        run: poetry run pytest --cov=sql_ai --cov-report=xml --cov-report=term-missing
+
+      # Show where coverage artifacts landed (useful when debugging CI)
+      - name: Show coverage artifacts
+        run: |
+          ls -al
+          find . -maxdepth 3 -name "coverage.xml" -o -name ".coverage*"
+
+      # Upload the coverage.xml to Codecov
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          fail_ci_if_error: true
+          verbose: true

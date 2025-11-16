@@ -17,7 +17,8 @@ dependencies = [
   "boto3-stubs[athena]>=1.39.3",
   "mypy-boto3-athena (>=1.40.0,<2.0.0)",
   "pytest-mock (>=3.14.1,<4.0.0)",
-  "moto (>=5.1.9,<6.0.0)"
+  "moto (>=5.1.9,<6.0.0)",
+  "pytest-cov (>=7.0.0,<8.0.0)"
 ]
 
 [build-system]
@@ -40,7 +41,6 @@ flake8-black = "^0.3.6"
 [tool.poetry.group.test.dependencies]
 nox-poetry = "^1.0"
 pytest = "^8.0"
-pytest-cov = "^4.0"
 
 
 [tool.poetry.group.typing.dependencies]

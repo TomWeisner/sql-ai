@@ -1,3 +1,5 @@
+"""Tests for SqlLLM behavior specific to Athena setup/model selection."""
+
 from unittest.mock import MagicMock
 
 from sql_ai.bedrock.models import MODEL_REGISTRY

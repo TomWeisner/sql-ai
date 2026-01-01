@@ -3,7 +3,7 @@ from functools import wraps
 from typing import Callable, Optional, Union
 
 from sql_ai.streamlit.safe import st_if_ctx
-from sql_ai.streamlit.utils import sidebar_typewriter
+from sql_ai.streamlit.utils import render_sidebar_steps, sidebar_typewriter
 from sql_ai.tracking.step import (
     Step,
     log_step_starting,
@@ -44,8 +44,15 @@ def resolve_step_name(
 
 def _write_line(text: str, speed: float):
     print(text)
-    if st_if_ctx() is not None:
-        sidebar_typewriter(text=text, speed=speed)
+    st = st_if_ctx()
+    if st is not None:
+        if not st.session_state.get("suppress_steps"):
+            steps = st.session_state.setdefault("steps_taken", [])
+            steps.append(text)
+            if not st.session_state.get("suppress_sidebar_typewriter"):
+                sidebar_typewriter(text=text, speed=speed)
+            else:
+                render_sidebar_steps(steps)
 
 
 @contextmanager

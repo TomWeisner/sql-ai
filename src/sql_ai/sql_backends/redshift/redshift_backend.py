@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
-from sql_ai.redshift.prompt_defaults import (
+from sql_ai.sql_backend.base import SqlBackend
+from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.redshift.prompt_defaults import (
     REDSHIFT_CONTEXT_TEMPLATE,
     REDSHIFT_GUIDELINES,
 )
-from sql_ai.redshift.sql_formatting import SQLRedshiftCompliance, SQLRedshiftStandards
-from sql_ai.sql_backend.base import SqlBackend
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.redshift.sql_formatting import (
+    SQLRedshiftCompliance,
+    SQLRedshiftStandards,
+)
 from sql_ai.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
 from sql_ai.tracking.decorator import track_step_and_log
 

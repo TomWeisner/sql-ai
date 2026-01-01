@@ -1,15 +1,29 @@
-"""Command-line entry point for running the SQL chatbot."""
+"""Command-line entry point for running the SQL chatbot.
+
+How to run:
+    - Streamlit UI (recommended): `python -m sql_ai.main --app cem --ui streamlit`
+      (or omit flags for prompts). This launches the chat UI so you can ask
+      questions and see SQL/results.
+    - CLI mode: `python -m sql_ai.main --engine athena --ui cli` then type your
+      questions in the terminal; generated SQL and answers print to stdout.
+
+What to expect:
+    - The app composes a SqlLLM with your chosen backend (Athena/Redshift).
+    - It generates SQL from your natural-language question, formats/validates it,
+      executes it, and then asks Bedrock to answer using the returned data.
+    - In the UI you’ll see the steps, SQL, formatting logs, data, and answer.
+"""
 
 import argparse
 import os
 from pathlib import Path
 from typing import Sequence
 
-from sql_ai.athena.athena_backend import AthenaBackend
 from sql_ai.config import Config
-from sql_ai.redshift.redshift_backend import RedshiftBackend
 from sql_ai.sql_backend.base import SqlBackend
 from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
+from sql_ai.sql_backends.redshift.redshift_backend import RedshiftBackend
 from sql_ai.sql_llm import SqlLLM
 
 

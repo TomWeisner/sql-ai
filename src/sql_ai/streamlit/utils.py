@@ -9,6 +9,20 @@ try:
 except ModuleNotFoundError:  # Streamlit is optional for non-UI contexts.
     st = None  # type: ignore
 
+_SIDEBAR_STEPS_PLACEHOLDER = None
+
+
+def set_sidebar_steps_placeholder(placeholder):
+    global _SIDEBAR_STEPS_PLACEHOLDER
+    _SIDEBAR_STEPS_PLACEHOLDER = placeholder
+
+
+def render_sidebar_steps(steps: list[str]) -> bool:
+    if st is None or _SIDEBAR_STEPS_PLACEHOLDER is None:
+        return False
+    _SIDEBAR_STEPS_PLACEHOLDER.markdown("\n\n".join(steps))
+    return True
+
 
 def neat_prompt(prompt: dict) -> str:
     if not prompt:
@@ -25,11 +39,24 @@ def sidebar_typewriter(text: str, speed: float = 0.005):
     if st is None:
         print(text)
         return
-    container = st.sidebar.empty()
+    if _SIDEBAR_STEPS_PLACEHOLDER is None:
+        container = st.sidebar.empty()
+        typed = ""
+        for char in text:
+            typed += char
+            container.markdown(f"{typed}")
+            time.sleep(speed)
+        return
+
+    steps = st.session_state.get("steps_taken", [])
+    prefix = "\n\n".join(steps[:-1])
     typed = ""
     for char in text:
         typed += char
-        container.markdown(f"{typed}")
+        if prefix:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(f"{prefix}\n\n{typed}")
+        else:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(typed)
         time.sleep(speed)
 
 

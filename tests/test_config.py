@@ -1,4 +1,5 @@
-# tests/test_config.py
+"""Tests for Config defaults, resolution, and validation."""
+
 import pytest
 
 from sql_ai.config import Config
@@ -56,7 +57,7 @@ def test_custom_config(custom_config):
         ("987654321098", "another-profile"),
     ],
 )
-def test_aws_profile_resolution(mocker, aws_account_id, expected_profile):
+def test_aws_profile_resolution(monkeypatch, aws_account_id, expected_profile):
     """
     Test the resolution of AWS profiles based on account ID.
 
@@ -70,8 +71,10 @@ def test_aws_profile_resolution(mocker, aws_account_id, expected_profile):
         expected_profile: The expected AWS profile to be resolved.
     """
 
-    mocker.patch(
-        "sql_ai.config.find_aws_profile_by_account_id", return_value=expected_profile
+    monkeypatch.setenv("SQL_AI_FAKE_AWS_PROFILE", "")  # ensure no env override
+    monkeypatch.setattr(
+        "sql_ai.config.find_aws_profile_by_account_id",
+        lambda _account_id: expected_profile,
     )
     config = Config(aws_account_id=aws_account_id)
     assert config.aws_profile == expected_profile

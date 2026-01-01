@@ -36,9 +36,23 @@ All sessions can be run together with `nox`
 
 It is recommended to run `nox` successfully before pushing.
 
+## For analysts (using the app)
+- Launch the UI: `streamlit run src/sql_ai/streamlit/app.py` from the repo root.
+- Ask questions: type a natural-language question in the Streamlit input; the app generates SQL, executes it, and shows an answer.
+- Inspect the result: expand the tabs to see the SQL, formatting changes, data, and prompts that drove the answer.
+- Export: use the download button in the “Data” tab to export the result set as CSV.
+- Troubleshoot: if you see an error, check the displayed SQL and formatting logs; retry after adjusting your question.
+
+## For engineers (extending or debugging)
+- Run checks: `nox` or individual sessions (e.g., `nox -s lint`, `nox -s tests`).
+- Add datasets: create a new app object in `src/sql_ai/app_objects/` that defines tables, config, and a prompt; wire it into `main.py` if you need CLI selection.
+- Add a dialect: follow “How to add a new SQL dialect” to implement a backend, prompts, and formatting rules.
+- Debug generations: use the Streamlit tabs to inspect prompts/SQL/formatting; check backend errors for the executed SQL.
+- Tests: mirror backend tests (see `tests/athena/`, `tests/redshift/`) when adding engines or changing execution paths.
+
 ## How to add a new SQL dialect
 1. Implement the backend: create `src/sql_ai/<dialect>/<dialect>_backend.py` with a `<Dialect>Backend` that satisfies `SqlBackend` (clients, metadata/schemas, execution).
-2. Provide prompts: add context/guidelines (see `athena/prompt_defaults.py`, `redshift/prompt_defaults.py`).
+2. Provide prompts: add context/guidelines (see `sql_backends/athena/prompt_defaults.py`, `sql_backends/redshift/prompt_defaults.py`).
 3. Add formatting: create compliance and style formatters (i.e `src/sql_ai/<dialect>/sql_formatting/<dialect>_compliance.py` and `src/sql_ai/<dialect>/sql_formatting/<dialect>_style_standards_.py`).
 4. Attach them to the backend’s `SQLFormatting` chain, so generated SQL is cleaned for your dialect.
 5. Instantiate and use: pass your backend into `SqlLLM(config=..., backend=...)` (or create an app object that does this).
@@ -77,7 +91,7 @@ SQL formatting: `src/sql_ai/sql_formatting/`
 - style: enforce spacing/JOIN/style conventions
 - logging: record every change so the UI can show the history
 
-Dialect backends: `src/sql_ai/athena/`, `src/sql_ai/redshift/`
+Dialect backends: `src/sql_ai/sql_backends/athena/`, `src/sql_ai/sql_backends/redshift/`
 - clients: handle engine clients and connections
 - metadata: fetch schemas and metadata tables
 - execution: submit queries and stream results
@@ -88,4 +102,20 @@ Step tracking: `src/sql_ai/tracking/`
 - wrapping: decorate major phases with emoji-labelled progress messages
 - UI: feed those steps into the Streamlit sidebar
 
-If any phase fails (formatting error, backend validation, etc.), `SqlLLM` retries with the formatter’s feedback until a valid query is produced or the retry limit is hit. Once the SQL succeeds, the data is fed back into Bedrock to craft the final answer shown in the UI.***
+If any phase fails (formatting error, backend validation, etc.), `SqlLLM` retries with the formatter’s feedback until a valid query is produced or the retry limit is hit. Once the SQL succeeds, the data is fed back into Bedrock to craft the final answer shown in the UI.
+
+### Architecture flow
+
+```mermaid
+A - User question via Streamlit UI
+B - Declare tables: Table(name="demo", database="db", catalog="cat", description="Mock table")
+C - Init backend: AthenaBackend(output_bucket="s3://bucket", ...)
+D - Populate schemas: backend.populate_schemas()
+E - Build SQL prompt: sql_prompt.build_prompt_body_for_sql(question, tables)
+F - Generate SQL: SqlLLM.generate_sql(question) -> Bedrock
+G - Raw SQL text from Bedrock
+H - Format/validate SQL: backend.format_query(sql)
+I - Execute query: backend.run_query(formatted_sql) -> DataFrame
+J - Answer from data: SqlLLM.question_about_data(question, df) -> Bedrock
+K - UI shows steps / SQL / logs / data / answer
+```

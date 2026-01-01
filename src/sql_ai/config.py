@@ -17,6 +17,11 @@ class Config:
     aws_athena_s3_output_bucket: str = ""
     aws_athena_catalog: str = "awsdatacatalog"
     aws_athena_database: str = "default"
+    aws_redshift_cluster_identifier: str = ""
+    aws_redshift_workgroup_name: str = ""
+    aws_redshift_database: str = "dev"
+    aws_redshift_db_user: str = ""
+    aws_redshift_secret_arn: str = ""
 
     bedrock_model_key: ModelKey = "claude-3.7"  # callers pass a key
     bedrock_model: Model = field(init=False)  # derived, not user-set

@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+SchemaType = dict[str, str]
+
 
 @dataclass
 class Table:
@@ -8,7 +10,7 @@ class Table:
     description: Optional[str] = None
     catalog: Optional[str] = "awsdatacatalog"
     database: str = "default"
-    schema: Optional[str] = None
+    schema: Optional[SchemaType] = None
 
     def __post_init__(self):
         if not self.description:
@@ -16,17 +18,8 @@ class Table:
         if self.catalog is None:
             self.catalog = "awsdatacatalog"
 
-        if isinstance(self.schema, list):
-            dict_schema = {}
-            for column in self.schema:
-                column = column.strip()
-                if "(" not in column or not column.endswith(")"):
-                    raise ValueError(
-                        f"Invalid format: '{column}', expecting 'column_name (data_type)'"
-                    )
-                name, datatype = column[:-1].split("(", 1)
-                dict_schema[name.strip()] = datatype.strip()
-            self.schema = dict_schema
+        if self.schema is not None and not isinstance(self.schema, dict):
+            raise TypeError("Table.schema must be a dict mapping column -> datatype.")
 
     def qualified_name(self):
         """dialect-specific qualified identifier."""

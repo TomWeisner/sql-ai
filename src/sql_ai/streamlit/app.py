@@ -8,8 +8,10 @@ streamlit run src/sql_ai/streamlit/app.py
 """
 
 import logging
+import os
 from datetime import datetime
 
+import pandas as pd
 import streamlit as st
 
 from sql_ai.app_objects.cem_timetable import CEMLLM
@@ -56,6 +58,7 @@ class ChatbotApp:
             "format_logs": None,
             "results_df": None,
             "answer": None,
+            "query_runs": [],
         }
         for k, v in defaults.items():
             st.session_state.setdefault(k, v)
@@ -141,6 +144,16 @@ class ChatbotApp:
                         "data_prompt": neat_prompt(data_prompt),
                     }
                 )
+                st.session_state.query_runs.append(
+                    {
+                        "question": question,
+                        "sql_query": st.session_state.sql_query,
+                        "sql_prompt": st.session_state.sql_prompt,
+                        "format_logs": st.session_state.format_logs,
+                        "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
+                        "data_prompt": st.session_state.data_prompt,
+                    }
+                )
         except Exception as e:
             display_enhanced_traceback(e)
 
@@ -166,66 +179,62 @@ class ChatbotApp:
             self._handle_question_actual(question, use_supplied_sql)
 
     def _render_tabs(self):
-        tabs = []
-
-        if st.session_state.sql_query:
-            tabs.append(
-                (
-                    "📄 SQL",
-                    lambda: st.code(st.session_state.sql_query, language="sql"),
-                )
-            )
-
-        if st.session_state.sql_prompt:
-            tabs.append(
-                (
-                    "🛠 SQL Prompt",
-                    lambda: st.code(st.session_state.sql_prompt, language="json"),
-                )
-            )
-
-        if st.session_state.format_logs:
-            tabs.append(
-                (
-                    "🎨 SQL Formatting",
-                    lambda: st.code(st.session_state.format_logs, language="sql"),
-                )
-            )
-
-        df = st.session_state.results_df
-        if df is not None:
-            tabs.append(
-                (
-                    "🧮 Data",
-                    lambda: st.data_editor(
-                        df, use_container_width=True, num_rows="dynamic"
-                    ),
-                )
-            )
-            csv = df.to_csv(index=False).encode("utf-8")
-            file_name = f"results_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
-            tabs.append(
-                (
-                    "⬇️ Download data",
-                    lambda: st.download_button(
-                        "⬇️ Download output data.", csv, file_name, "text/csv"
-                    ),
-                )
-            )
-
-        if st.session_state.data_prompt:
-            tabs.append(
-                (
-                    "🧾 Output prompt",
-                    lambda: st.code(st.session_state.data_prompt, language="json"),
-                )
-            )
-
-        if tabs:
-            labels, render_fns = zip(*tabs)
-            for tab, render in zip(st.tabs(labels), render_fns):
-                with tab:
-                    render()
+        runs = st.session_state.get("query_runs", [])
+        for idx, run in enumerate(runs):
+            label = f"Details for: {run.get('question','(unknown)')}"
+            with st.expander(label, expanded=(idx == len(runs) - 1)):
+                tabs = []
+                if run.get("sql_query"):
+                    tabs.append(
+                        ("📄 SQL", lambda sql=run["sql_query"]: st.code(sql, "sql"))
+                    )
+                if run.get("sql_prompt"):
+                    tabs.append(
+                        (
+                            "🛠 SQL Prompt",
+                            lambda prompt=run["sql_prompt"]: st.code(prompt, "json"),
+                        )
+                    )
+                if run.get("format_logs"):
+                    tabs.append(
+                        (
+                            "🎨 SQL Formatting",
+                            lambda logs=run["format_logs"]: st.code(logs, "sql"),
+                        )
+                    )
+                df = run.get("results_df")
+                if df is not None:
+                    tabs.append(
+                        (
+                            "🧮 Data",
+                            lambda df=df: st.data_editor(
+                                df, use_container_width=True, num_rows="dynamic"
+                            ),
+                        )
+                    )
+                    csv = df.to_csv(index=False).encode("utf-8")
+                    now_str = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                    file_name = f"results_{now_str}.csv"
+                    tabs.append(
+                        (
+                            "⬇️ Download data",
+                            lambda csv=csv, file_name=file_name: st.download_button(
+                                "⬇️ Download output data.", csv, file_name, "text/csv"
+                            ),
+                        )
+                    )
+                if run.get("data_prompt"):
+                    tabs.append(
+                        (
+                            "🧾 Output prompt",
+                            lambda prompt=run["data_prompt"]: st.code(prompt, "json"),
+                        )
+                    )
+                if tabs:
+                    labels, render_fns = zip(*tabs)
+                    for tab, render in zip(st.tabs(labels), render_fns):
+                        with tab:
+                            render()
 
     def _show_answer(self, keep_context):
         if answer := st.session_state.answer:
@@ -243,6 +252,7 @@ class ChatbotApp:
                     for key in list(st.session_state.keys()):
                         del st.session_state[key]
                     st.session_state["suppress_default_question"] = True
+                    st.session_state["query_runs"] = []
                     st.rerun()
             with col2:
                 if st.button("🔁 Retry question"):
@@ -251,21 +261,21 @@ class ChatbotApp:
 
 
 if __name__ == "__main__":
-    use_cem = True
-    if use_cem:
+    app_choice = os.getenv("SQL_AI_STREAMLIT_APP", "cem").lower()
+    if app_choice == "pixar":
+        question = "avg length of film?"
+        CB = ChatbotApp(
+            athena_llm=PixarLLM,
+            title="Pixar",
+            default_question=question,
+        )
+    else:
         question = (
             "on avg how many trains stop at peterborough each day over the last week?"
         )
         CB = ChatbotApp(
             athena_llm=CEMLLM,
             title="CEM Timetable",
-            default_question=question,
-        )
-    else:
-        question = "avg length of film?"
-        CB = ChatbotApp(
-            athena_llm=PixarLLM,
-            title="Pixar",
             default_question=question,
         )
 

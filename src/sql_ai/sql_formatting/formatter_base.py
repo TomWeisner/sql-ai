@@ -10,8 +10,8 @@ from sql_ai.sql_backend.table import Table
 from sql_ai.tracking.decorator import track_step_and_log
 
 
-class SQLCleaning(ABC):
-    """Cleansing logic (hand holding) for supplied SQL queries"""
+class SQLFormatter(ABC):
+    """Formatting logic (hand holding) for supplied SQL queries"""
 
     def __init__(self, nickname: str = "") -> None:
         self.replacement_count: int = 1

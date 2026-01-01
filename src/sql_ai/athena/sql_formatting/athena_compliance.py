@@ -12,10 +12,10 @@ from sql_ai.athena.allowed_objects.functions import (
     common_function_conversions,
 )
 from sql_ai.sql_backend.table import Table
-from sql_ai.sql_formatting.clean_base import SQLCleaning
+from sql_ai.sql_formatting.formatter_base import SQLFormatter
 
 
-class SQLAthenaCompliance(SQLCleaning):
+class SQLAthenaCompliance(SQLFormatter):
     """Fix SQL queries to Athena specifications. This class is an
     implementation of the SQLCleaning class, and so has the same
     methods controlling the SQL cleaning. Additionally, it has methods
@@ -68,7 +68,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return sql
 
-    @SQLCleaning.auto_log_replacements("Adding table aliases to FROM and JOIN clauses")
+    @SQLFormatter.auto_log_replacements("Adding table aliases to FROM and JOIN clauses")
     def _add_table_alias_to_from_or_join_clause(self, _, table: Table, alias: str):
         pattern = rf"""
             \b(FROM|JOIN)\s+   # Match FROM or JOIN followed by whitespace
@@ -85,7 +85,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements("Adding table aliases to table references")
+    @SQLFormatter.auto_log_replacements("Adding table aliases to table references")
     def _use_table_alias_in_table_reference(self, _, table: Table, alias: str):
 
         qualified = re.escape(table.qualified_name())
@@ -151,7 +151,7 @@ class SQLAthenaCompliance(SQLCleaning):
         output = f"{keyword} {matches[0].qualified_name()} "
         return output
 
-    @SQLCleaning.auto_log_replacements("Fully qualifying column names")
+    @SQLFormatter.auto_log_replacements("Fully qualifying column names")
     def _clean_partially_qualified_columns(self, _, tables: list):
         pattern = r"""
             (?P<prefix>\s+|\()        # leading space or opening bracket
@@ -189,7 +189,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Fully qualifying table names in SHOW CREATE TABLE queries"
     )
     def _clean_show_create_table(self, _, tables: list[Table]) -> tuple[str, Callable]:
@@ -211,7 +211,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Fully qualifying table names in FROM and JOIN clauses"
     )
     def _clean_from_join(self, _, tables: list[Table]) -> tuple[str, Callable]:
@@ -257,7 +257,7 @@ class SQLAthenaCompliance(SQLCleaning):
         sql = self._clean_stand_alone_rand(sql)
         return sql
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Replacing RAND(<non-number>) with AND (<non-number>)"
     )
     def _clean_rand_followed_by_brackets(self, _) -> tuple[str, Callable]:
@@ -277,7 +277,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements("Replacing ' RAND ' with ' AND '")
+    @SQLFormatter.auto_log_replacements("Replacing ' RAND ' with ' AND '")
     def _clean_stand_alone_rand(self, _) -> tuple[str, Callable]:
         pattern = r"(?<=\s)RAND(?=\s)"
 
@@ -286,7 +286,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements("Adding quotes around aliases")
+    @SQLFormatter.auto_log_replacements("Adding quotes around aliases")
     def _clean_aliases(self, *args) -> tuple[str, Callable]:
         datatypes = athena_allowed_datatypes + list(common_datatype_conversions.keys())
 
@@ -315,7 +315,7 @@ class SQLAthenaCompliance(SQLCleaning):
         sql = self._replace_closest_invalid_functions(sql)
         return sql
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Replacing invalid Athena function with known conversion"
     )
     def _replace_common_function_conversions(self, sql: str) -> tuple[str, Callable]:
@@ -333,7 +333,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Replacing invalid Athena function with closest match"
     )
     def _replace_closest_invalid_functions(self, sql: str) -> tuple[str, Callable]:
@@ -372,7 +372,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Adding quotes around INTERVAL number", flags=re.IGNORECASE
     )
     def _clean_intervals(self, *args) -> tuple[str, Callable]:
@@ -386,7 +386,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Adding quotes around DATE_DIFF unit", flags=re.IGNORECASE
     )
     def _clean_date_diff(self, *args) -> tuple[str, Callable]:
@@ -414,7 +414,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Replacing DATE_SUB with DATE_ADD", flags=re.IGNORECASE
     )
     def _clean_date_sub(self, *args) -> tuple[str, Callable]:
@@ -441,7 +441,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Removing brackets after datetime literals", flags=re.IGNORECASE
     )
     def _clean_datetime_literals(self, *args) -> tuple[str, Callable]:
@@ -454,7 +454,7 @@ class SQLAthenaCompliance(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Ensuring cast has a valid datatype conversion and ends with a )"
     )
     def _clean_cast(self, *args) -> tuple[str, Callable]:

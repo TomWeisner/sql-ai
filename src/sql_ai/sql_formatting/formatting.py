@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Protocol, Sequence, Tuple
 
 from sql_ai.sql_backend.table import Table
-from sql_ai.sql_formatting.clean_base import SQLCleaning
+from sql_ai.sql_formatting.formatter_base import SQLFormatter
 from sql_ai.tracking.decorator import track_step_and_log
 
 
@@ -23,10 +23,10 @@ class SQLFormatting:
 
     def __init__(
         self,
-        formatters: Sequence[Tuple[str, SQLCleaning]] | None = None,
+        formatters: Sequence[Tuple[str, SQLFormatter]] | None = None,
         metadata_describer: "MetadataDescriber | None" = None,
     ):
-        self.formatters: list[tuple[str, SQLCleaning]] = list(formatters or [])
+        self.formatters: list[tuple[str, SQLFormatter]] = list(formatters or [])
         self.metadata_describer = metadata_describer
 
     @track_step_and_log("🎨 Formatting SQL")

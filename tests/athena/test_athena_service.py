@@ -52,7 +52,7 @@ def test_populate_schemas_single_table(athena_backend, mock_athena_client):
 
     athena_backend.tables[0].schema = None
     athena_backend.populate_schemas()
-    assert "station_name" in athena_backend.tables[0].schema
+    assert athena_backend.tables[0].schema == {"station_name": "string"}
 
 
 def test_get_schema_from_athena_nonexistent_table(athena_backend, mock_athena_client):

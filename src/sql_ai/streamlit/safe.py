@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 try:
     import streamlit  # type: ignore
 except ModuleNotFoundError:  # Streamlit is optional outside the UI.
@@ -11,6 +13,8 @@ def st_if_ctx():
     Return the `streamlit` module if a ScriptRunContext exists; else None.
     Works across Streamlit versions.
     """
+    if os.getenv("SQL_AI_CLI_MODE") == "1":
+        return None
     try:
         try:
             # Newer path

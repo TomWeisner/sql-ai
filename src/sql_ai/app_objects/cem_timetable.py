@@ -81,5 +81,3 @@ CEMLLM = SqlLLM(
     sql_prompt=CEMPrompt(),
     config=CEMConfig,
 )
-
-print(CEMLLM)

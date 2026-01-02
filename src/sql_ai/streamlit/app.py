@@ -20,8 +20,17 @@ from sql_ai.app_objects.cem_timetable import CEMLLM
 from sql_ai.app_objects.pixar_films import PixarLLM
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.css_utils import (
+    inject_app_styles,
     set_sidebar_width_and_center_content,
     set_title_top_padding,
+)
+from sql_ai.streamlit.ui_templates import (
+    button_class_script_html,
+    message_time_html,
+    table_desc_html,
+    table_meta_html,
+    toggle_class_script_html,
+    user_message_html,
 )
 from sql_ai.streamlit.utils import (
     display_enhanced_traceback,
@@ -69,134 +78,16 @@ class ChatbotApp:
             "keep_context": True,
             "use_supplied_sql": False,
             "dry_run": True,
+            "show_tabs": True,
         }
         for k, v in defaults.items():
             st.session_state.setdefault(k, v)
 
     def run(self):
-        print("Running app...")
         st.session_state.setdefault("suppress_sidebar_typewriter", True)
         set_sidebar_width_and_center_content(sidebar_width=450, max_content_width=1100)
         set_title_top_padding(rem=0)
-        st.markdown(
-            """
-            <style>
-            :root {
-                --chat-width: 640px;
-            }
-            .stMarkdown,
-            .stMarkdown > div {
-                width: 100%;
-            }
-            .block-container {
-                max-width: var(--chat-width);
-            }
-            .user-row {
-                display: inline-flex;
-                justify-content: flex-end;
-                align-items: center;
-                gap: 10px;
-                background: #f6f7f9;
-                border-radius: 14px;
-                padding: 14px 16px;
-                margin: 6px 0 12px 0;
-                max-width: 100%;
-            }
-            .user-row-wrap {
-                display: flex;
-                justify-content: flex-end;
-                width: 100%;
-            }
-            .user-row .user-text {
-                text-align: right;
-                font-weight: 500;
-            }
-            .chat-action-row {
-                display: inline-flex;
-                gap: 6px;
-                align-items: center;
-                width: 100%;
-            }
-            .message-time {
-                font-size: 0.75rem;
-                color: #9ca3af;
-                margin-top: 4px;
-            }
-            .message-time.right {
-                text-align: right;
-            }
-            .message-time.left {
-                text-align: left;
-            }
-            [data-testid="stTextInput"] input {
-                border-radius: 999px;
-                padding: 0.65rem 0.95rem;
-                border: 1px solid #e5e7eb;
-                background: #f3f4f6;
-                width: 100%;
-            }
-            div[data-testid="stChatInput"] {
-                max-width: var(--chat-width);
-                margin-left: auto;
-                margin-right: auto;
-            }
-            div[data-testid="stChatInput"] > div {
-                max-width: var(--chat-width);
-                margin-left: auto;
-                margin-right: auto;
-            }
-            [data-testid="stTextInput"] div[data-baseweb="base-input"] {
-                background: transparent;
-                border: none;
-            }
-            [data-testid="stTextInput"] div[data-baseweb="base-input"] > div {
-                background: transparent;
-            }
-            [data-testid="stForm"] button {
-                border-radius: 999px;
-                padding: 0.55rem 0.8rem;
-                border: 1px solid #e5e7eb;
-                background: #f3f4f6;
-            }
-            [data-testid="stButton"] button {
-                white-space: nowrap;
-                width: 100%;
-            }
-            button.btn-clear,
-            button.btn-retry {
-                border: none;
-                background: transparent;
-                box-shadow: none;
-                padding: 6px 8px;
-                border-radius: 10px;
-                font-size: 1rem;
-                font-weight: 500;
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-            }
-            button.btn-clear:hover {
-                background: #fee2e2;
-                color: #991b1b;
-            }
-            button.btn-retry:hover {
-                background: #dcfce7;
-                color: #166534;
-            }
-            div[data-testid="stExpander"] {
-                border: none;
-                box-shadow: none;
-                max-width: var(--chat-width);
-                margin-left: 0;
-            }
-            div[data-testid="stExpander"] > details {
-                border: none;
-                box-shadow: none;
-            }
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
+        inject_app_styles(chat_width=640)
         self._render_tables_panel()
         st.sidebar.title("🧭 Steps taken")
         set_sidebar_steps_placeholder(st.sidebar.empty())
@@ -281,7 +172,6 @@ class ChatbotApp:
                     "format_logs": st.session_state.format_logs,
                     "results_df": None,
                     "data_prompt": None,
-                    "answered_at": datetime.now().strftime("%H:%M:%S"),
                     "answer": None,
                     "dry_run": True,
                     "duration_s": (datetime.now() - start_time).total_seconds(),
@@ -308,7 +198,6 @@ class ChatbotApp:
                     "format_logs": st.session_state.format_logs,
                     "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
                     "data_prompt": st.session_state.data_prompt,
-                    "answered_at": datetime.now().strftime("%H:%M:%S"),
                     "answer": answer,
                     "dry_run": False,
                     "duration_s": (datetime.now() - start_time).total_seconds(),
@@ -343,6 +232,8 @@ class ChatbotApp:
                 "use_supplied_sql": use_supplied_sql,
                 "dry_run": dry_run,
                 "asked_at": asked_at,
+                "show_tabs": None,
+                "show_tabs_override": False,
             }
         )
 
@@ -361,9 +252,8 @@ class ChatbotApp:
                     )
                     st.session_state["suppress_sidebar_typewriter"] = False
                     try:
-                        with st.spinner(
-                            f"Generating answer... ({self.llm.config.bedrock_model.name})"
-                        ):
+                        model_name = self.llm.config.bedrock_model.name
+                        with st.spinner(f"_Generating answer... ({model_name})_"):
                             with track_step_and_log_cm("Processing user input"):
                                 result = self._handle_question_actual(
                                     run.get("question", ""),
@@ -390,7 +280,14 @@ class ChatbotApp:
             else:
                 has_answer = False
 
-            with st.expander("Details", expanded=False):
+            run_show_tabs = run.get("show_tabs")
+            run_tabs_override = run.get("show_tabs_override", False)
+            is_last_run = idx == len(runs) - 1
+            if is_last_run and run_tabs_override:
+                effective_show_tabs = bool(run_show_tabs)
+            else:
+                effective_show_tabs = st.session_state.get("show_tabs", True)
+            if effective_show_tabs:
                 tabs = []
                 if run.get("sql_query"):
                     tabs.append(
@@ -460,31 +357,24 @@ class ChatbotApp:
                             render()
 
             answered_at = run.get("answered_at")
+            if not answered_at and (has_answer or run.get("dry_run")):
+                answered_at = datetime.now().strftime("%H:%M:%S")
+                st.session_state.query_runs[idx]["answered_at"] = answered_at
             if has_answer:
                 self._render_assistant_message(run["answer"], answered_at)
             elif run.get("dry_run"):
-                st.caption("Dry run: SQL generated, not executed.")
+                st.markdown("*Dry run: SQL generated, not executed.*")
                 if answered_at:
                     st.markdown(
-                        f"<div class='message-time left'>{answered_at}</div>",
+                        message_time_html(answered_at, "left"),
                         unsafe_allow_html=True,
                     )
 
     def _render_user_message(self, question: str, timestamp: str | None):
-        question_text = html.escape(question)
-        st.markdown(
-            f"""
-            <div class="user-row-wrap">
-                <div class="user-row">
-                    <span class="user-text">{question_text}</span>
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown(user_message_html(question), unsafe_allow_html=True)
         if timestamp:
             st.markdown(
-                f"<div class='message-time right'>{timestamp}</div>",
+                message_time_html(timestamp, "right"),
                 unsafe_allow_html=True,
             )
 
@@ -492,7 +382,7 @@ class ChatbotApp:
         st.markdown(message)
         if timestamp:
             st.markdown(
-                f"<div class='message-time left'>{timestamp}</div>",
+                message_time_html(timestamp, "left"),
                 unsafe_allow_html=True,
             )
 
@@ -506,39 +396,62 @@ class ChatbotApp:
 
     def _render_footer_controls(self):
         if st.session_state.last_user_input:
-            col_retry, col_clear, _ = st.columns([0.5, 0.5, 9], gap="small")
+            col_retry, col_clear, col_tabs, _ = st.columns(
+                [0.4, 0.4, 0.4, 8.8], gap="small"
+            )
             with col_retry:
                 if st.button("🔁", help="Retry last question"):
                     st.session_state.retry_triggered = True
                     st.rerun()
             with col_clear:
-                if st.button("🧹", help="Clear chat"):
+                if st.button("🗑️", help="Clear chat"):
                     for key in list(st.session_state.keys()):
                         del st.session_state[key]
                     st.session_state["suppress_default_question"] = True
                     st.session_state["query_runs"] = []
                     st.rerun()
-            components.html(
-                """
-                <script>
-                const root = window.parent.document;
-                const buttons = root.querySelectorAll('button');
-                buttons.forEach((btn) => {
-                  const text = (btn.innerText || '').trim().toLowerCase();
-                  if (text === '🧹') {
-                    btn.classList.add('btn-clear');
-                  }
-                  if (text === '🔁') {
-                    btn.classList.add('btn-retry');
-                  }
-                });
-                </script>
-                """,
-                height=0,
+            runs = st.session_state.get("query_runs", [])
+            last_completed_idx = next(
+                (
+                    idx
+                    for idx in range(len(runs) - 1, -1, -1)
+                    if runs[idx].get("status") == "complete"
+                ),
+                None,
             )
+            if last_completed_idx is not None:
+                with col_tabs:
+                    run_show_tabs = runs[last_completed_idx].get("show_tabs")
+                    run_tabs_override = runs[last_completed_idx].get(
+                        "show_tabs_override", False
+                    )
+                    effective_show_tabs = (
+                        run_show_tabs
+                        if run_tabs_override
+                        else st.session_state.get("show_tabs", True)
+                    )
+                    tabs_icon = "🙈" if effective_show_tabs else "🔍"
+                    tabs_help = (
+                        "Hide tabs for the latest answer"
+                        if effective_show_tabs
+                        else "Show tabs for the latest answer"
+                    )
+                    if st.button(
+                        tabs_icon,
+                        key=f"toggle_tabs_footer_{last_completed_idx}",
+                        help=tabs_help,
+                    ):
+                        st.session_state.query_runs[last_completed_idx][
+                            "show_tabs"
+                        ] = not effective_show_tabs
+                        st.session_state.query_runs[last_completed_idx][
+                            "show_tabs_override"
+                        ] = True
+                        st.rerun()
+            components.html(button_class_script_html(), height=0)
 
     def _render_query_options(self):
-        col_left, col_mid, col_right = st.columns([1, 1, 1])
+        col_left, col_mid, col_right, col_tabs = st.columns([1, 1, 1, 1])
         with col_left:
             st.checkbox(
                 "Keep memory",
@@ -550,12 +463,9 @@ class ChatbotApp:
             )
         with col_mid:
             st.checkbox(
-                "Supplied SQL",
-                key="use_supplied_sql",
-                help=(
-                    "If checked, you can paste SQL instead of generating "
-                    "it from natural language."
-                ),
+                "Show tabs",
+                key="show_tabs",
+                help="Toggle the display of additional info tabs in the answer.",
             )
         with col_right:
             st.checkbox(
@@ -563,6 +473,16 @@ class ChatbotApp:
                 key="dry_run",
                 help="Generate SQL and formatting logs but skip executing the query.",
             )
+        with col_tabs:
+            st.checkbox(
+                "Supplied SQL",
+                key="use_supplied_sql",
+                help=(
+                    "If checked, you can paste SQL instead of generating "
+                    "it from natural language."
+                ),
+            )
+        components.html(toggle_class_script_html(), height=0)
 
     def _render_tables_panel(self):
         with st.sidebar.expander("📚 Available tables", expanded=False):
@@ -583,11 +503,21 @@ class ChatbotApp:
                         )
             tables = list(self.llm.tables)
             for index, table in enumerate(tables):
+                st.markdown(f"**{table.name}**")
                 st.markdown(
-                    f"**{table.name}** — catalog={table.catalog}, db={table.database}"
+                    table_meta_html("catalog", table.catalog),
+                    unsafe_allow_html=True,
+                )
+                st.markdown(
+                    table_meta_html("db", table.database),
+                    unsafe_allow_html=True,
                 )
                 if table.description:
-                    st.caption(table.description)
+                    desc_html = self._format_table_description(table.description)
+                    st.markdown(
+                        table_desc_html(desc_html),
+                        unsafe_allow_html=True,
+                    )
                 if isinstance(table.schema, dict) and table.schema:
                     cols = "\n".join(
                         f"- `{col}` ({dtype})" for col, dtype in table.schema.items()
@@ -605,6 +535,14 @@ class ChatbotApp:
         if not render_sidebar_steps(steps):
             for step in steps:
                 st.sidebar.markdown(step)
+
+    @staticmethod
+    def _format_table_description(text: str) -> str:
+        escaped = html.escape(text)
+        parts = escaped.split("`")
+        for i in range(1, len(parts), 2):
+            parts[i] = f"<code>{parts[i]}</code>"
+        return "".join(parts)
 
 
 if __name__ == "__main__":

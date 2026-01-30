@@ -77,6 +77,11 @@ class SQLFormatting:
                 + sql
             )
 
+        total_edits = sum(
+            getattr(formatter, "total_edits", 0) for _, formatter in self.formatters
+        )
+        self.format_logs.append(f"Total edits applied: {total_edits}")
+
         print("SQL formatting complete")
 
         return SQLFormattingOutput(

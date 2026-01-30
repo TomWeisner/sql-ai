@@ -20,7 +20,7 @@ def custom_config():
         aws_athena_s3_output_bucket="my-bucket",
         aws_athena_catalog="my-catalog",
         aws_athena_database="my-database",
-        bedrock_model_key="claude-3.7",
+        bedrock_model_key="claude-sonnet-4.5",
         max_tokens=1000,
         temperature=0.5,
     )

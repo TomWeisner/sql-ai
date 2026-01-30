@@ -8,7 +8,7 @@ from sql_ai.sql_llm import SqlLLM
 from sql_ai.sql_prompting.prompting import SQLPrompt
 
 
-def _make_config(model_key: ModelKey = "claude-4.5") -> Config:
+def _make_config(model_key: ModelKey = "claude-sonnet-4.5") -> Config:
     return Config(
         aws_profile="test-profile",
         aws_account_id="123456789012",

@@ -133,7 +133,7 @@ def inject_app_styles(chat_width: int = 640):
         }}
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] > label > div {{
             justify-content: center;
-        }}
+        }}h
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] span {{
             text-align: center;
         }}
@@ -194,6 +194,12 @@ def inject_app_styles(chat_width: int = 640):
             margin-left: auto;
             margin-right: auto;
         }}
+        div[data-testid="stChatInput"] textarea {{
+            min-height: 48px;
+            height: auto;
+            overflow-y: hidden !important;
+            resize: vertical;
+        }}
         [data-testid="stTextInput"] div[data-baseweb="base-input"] {{
             background: transparent;
             border: none;
@@ -237,6 +243,24 @@ def inject_app_styles(chat_width: int = 640):
             background: #e0f2fe;
             color: #0c4a6e;
         }}
+        button.copied {{
+            position: relative;
+            outline: 2px solid #22c55e;
+            outline-offset: 2px;
+        }}
+        button.copied::after {{
+            content: "Copied!";
+            position: absolute;
+            top: -1.6rem;
+            right: 0;
+            background: #22c55e;
+            color: #ffffff;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 999px;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }}
         div[data-testid="stExpander"] {{
             border: 1px solid #e5e7eb;
             box-shadow: none;
@@ -246,6 +270,16 @@ def inject_app_styles(chat_width: int = 640):
         div[data-testid="stExpander"] > details {{
             border: none;
             box-shadow: none;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpander"]
+        div[data-testid="stExpander"] {{
+            border: none;
+            box-shadow: none;
+        }}
+        section[data-testid="stSidebar"] div[data-testid="stExpander"]
+        div[data-testid="stExpander"] > details {{
+            border: none;
+            background: transparent;
         }}
         </style>
         """,

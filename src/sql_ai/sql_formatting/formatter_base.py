@@ -19,12 +19,14 @@ class SQLFormatter(ABC):
         self.pending_logs: list = []
         self.methods: list[Callable] = []
         self.nickname = nickname
+        self.total_edits: int = 0
         assert self.nickname
 
     def _reset_logs(self):
         self.log_entries.clear()
         self.replacement_count = 1
         self.pending_logs.clear()
+        self.total_edits = 0
 
     def log_replacements(
         self,
@@ -61,11 +63,23 @@ class SQLFormatter(ABC):
         :param message: Optional message to include in the log
         :param indent_spaces: Number of spaces to indent the log message
         """
-        if before_list == after_list:
-            return
+        if len(before_list) != len(after_list):
+            raise ValueError("Before and after lists must be the same length")
 
         if not before_list:
             return
+
+        # Only log real changes (skip no-ops).
+        filtered_pairs = [
+            (before, after)
+            for before, after in zip(before_list, after_list)
+            if before is not None and before != after
+        ]
+
+        if not filtered_pairs:
+            return
+
+        self.total_edits += len(filtered_pairs)
 
         indent = " " * indent_spaces
 
@@ -76,13 +90,8 @@ class SQLFormatter(ABC):
         header = f"{self.replacement_count}. {message}"
 
         # Build the message body
-        if len(before_list) != len(after_list):
-            raise ValueError("Before and after lists must be the same length")
-
         formatted_lines = [
-            format_entry(before, after)
-            for before, after in zip(before_list, after_list)
-            if before is not None
+            format_entry(before, after) for before, after in filtered_pairs
         ]
         line_counts = Counter(formatted_lines)
         # dedupe, whilst preserving order

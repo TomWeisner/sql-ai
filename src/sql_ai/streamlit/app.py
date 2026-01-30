@@ -10,6 +10,7 @@ streamlit run src/sql_ai/streamlit/app.py
 import html
 import logging
 import os
+from dataclasses import replace
 from datetime import datetime
 
 import pandas as pd
@@ -18,6 +19,7 @@ import streamlit.components.v1 as components
 
 from sql_ai.app_objects.cem_timetable import CEMLLM
 from sql_ai.app_objects.pixar_films import PixarLLM
+from sql_ai.bedrock.models import MODEL_REGISTRY
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.css_utils import (
     inject_app_styles,
@@ -26,6 +28,8 @@ from sql_ai.streamlit.css_utils import (
 )
 from sql_ai.streamlit.ui_templates import (
     button_class_script_html,
+    chat_input_reset_script_html,
+    copy_button_script_html,
     message_time_html,
     table_desc_html,
     table_meta_html,
@@ -50,6 +54,16 @@ class ChatbotApp:
 
     def __init__(self, athena_llm: SqlLLM, title: str, default_question: str = ""):
         self.llm = athena_llm
+        saved_tables = getattr(self.llm, "all_tables", None) or getattr(
+            self.llm.backend, "all_tables", None
+        )
+        if saved_tables:
+            self.all_tables = list(saved_tables)
+        else:
+            base_tables = self.llm.backend.tables or self.llm.tables
+            self.all_tables = list(base_tables)
+            self.llm.all_tables = list(self.all_tables)
+            self.llm.backend.all_tables = list(self.all_tables)
         self.title = title
         self.default_question = default_question
         self._init_session_state()
@@ -78,7 +92,11 @@ class ChatbotApp:
             "keep_context": True,
             "use_supplied_sql": False,
             "dry_run": True,
+            "interpret_with_llm": True,
             "show_tabs": True,
+            "model_key": self.llm.config.bedrock_model_key,
+            "selected_table_ids": [],
+            "tables_selection_initialized": False,
         }
         for k, v in defaults.items():
             st.session_state.setdefault(k, v)
@@ -88,6 +106,7 @@ class ChatbotApp:
         set_sidebar_width_and_center_content(sidebar_width=450, max_content_width=1100)
         set_title_top_padding(rem=0)
         inject_app_styles(chat_width=640)
+        self._render_models_panel()
         self._render_tables_panel()
         st.sidebar.title("🧭 Steps taken")
         set_sidebar_steps_placeholder(st.sidebar.empty())
@@ -98,11 +117,17 @@ class ChatbotApp:
         keep_context = st.session_state.get("keep_context", True)
         use_supplied_sql = st.session_state.get("use_supplied_sql", False)
         dry_run = st.session_state.get("dry_run", True)
+        interpret_with_llm = st.session_state.get("interpret_with_llm", True)
 
         question = self._get_question()
 
         if question:
-            self._handle_question(question, keep_context, use_supplied_sql, dry_run)
+            if not self.llm.tables:
+                st.error("Please select at least one table to query.")
+                return
+            self._handle_question(
+                question, keep_context, use_supplied_sql, dry_run, interpret_with_llm
+            )
 
         self._render_conversation()
 
@@ -129,9 +154,11 @@ class ChatbotApp:
             return user_input
         return None
 
-    def _handle_question_actual(self, question, use_supplied_sql, dry_run=False):
+    def _handle_question_actual(
+        self, question, use_supplied_sql, dry_run=False, interpret_with_llm=True
+    ):
+        start_time = datetime.now()
         try:
-            start_time = datetime.now()
 
             if use_supplied_sql:
                 with track_step_and_log_cm("📥 Using user-supplied SQL..."):
@@ -170,6 +197,7 @@ class ChatbotApp:
                     "sql_query": st.session_state.sql_query,
                     "sql_prompt": st.session_state.sql_prompt,
                     "format_logs": st.session_state.format_logs,
+                    "error_traceback": st.session_state.error_traceback,
                     "results_df": None,
                     "data_prompt": None,
                     "answer": None,
@@ -183,6 +211,148 @@ class ChatbotApp:
                 df = self.llm.run_query(normalized_sql)
                 st.session_state.results_df = df
 
+            if interpret_with_llm:
+                with track_step_and_log_cm("⏳ Generating answer..."):
+                    answer, data_prompt = self.llm.question_about_data(question, df)
+                    st.session_state.update(
+                        {
+                            "answer": answer,
+                            "data_prompt": neat_prompt(data_prompt),
+                        }
+                    )
+                    return {
+                        "question": question,
+                        "sql_query": st.session_state.sql_query,
+                        "sql_prompt": st.session_state.sql_prompt,
+                        "format_logs": st.session_state.format_logs,
+                        "error_traceback": st.session_state.error_traceback,
+                        "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
+                        "data_prompt": st.session_state.data_prompt,
+                        "answer": answer,
+                        "dry_run": False,
+                        "ran_sql_only": False,
+                        "duration_s": (datetime.now() - start_time).total_seconds(),
+                    }
+            return {
+                "question": question,
+                "sql_query": st.session_state.sql_query,
+                "sql_prompt": st.session_state.sql_prompt,
+                "format_logs": st.session_state.format_logs,
+                "error_traceback": st.session_state.error_traceback,
+                "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
+                "data_prompt": None,
+                "answer": None,
+                "dry_run": False,
+                "ran_sql_only": True,
+                "duration_s": (datetime.now() - start_time).total_seconds(),
+            }
+        except Exception as e:
+            error_details = display_enhanced_traceback(e)
+            duration_s = (datetime.now() - start_time).total_seconds()
+            return {
+                "question": question,
+                "sql_query": st.session_state.get("sql_query"),
+                "sql_prompt": st.session_state.get("sql_prompt"),
+                "format_logs": st.session_state.get("format_logs"),
+                "results_df": st.session_state.get("results_df"),
+                "data_prompt": st.session_state.get("data_prompt"),
+                "answer": None,
+                "dry_run": dry_run,
+                "duration_s": duration_s,
+                "error_message": (
+                    error_details.get("message")
+                    if isinstance(error_details, dict)
+                    else "An error occurred."
+                ),
+                "exception_traceback": (
+                    error_details.get("traceback")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+                "error_exception": (
+                    error_details.get("exception_only")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+            }
+
+    def _execute_saved_sql(
+        self, idx: int, run: dict, generate_answer: bool = False
+    ) -> None:
+        sql_query = run.get("sql_query")
+        if not sql_query:
+            return
+        question = run.get("question", "")
+        start_time = datetime.now()
+        try:
+            with track_step_and_log_cm(
+                f"⚙️ Running SQL query on {self.llm.backend.name}..."
+            ):
+                df = self.llm.run_query(sql_query)
+                st.session_state.results_df = df
+
+            update_payload = {
+                **run,
+                "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
+                "data_prompt": None,
+                "answer": None,
+                "ran_sql_only": True,
+                "dry_run": False,
+                "status": "complete",
+                "duration_s": (datetime.now() - start_time).total_seconds(),
+                "answered_at": datetime.now().strftime("%H:%M:%S"),
+            }
+            if generate_answer:
+                with track_step_and_log_cm("⏳ Generating answer..."):
+                    answer, data_prompt = self.llm.question_about_data(question, df)
+                    st.session_state.update(
+                        {
+                            "answer": answer,
+                            "data_prompt": neat_prompt(data_prompt),
+                        }
+                    )
+                update_payload.update(
+                    {
+                        "answer": answer,
+                        "data_prompt": st.session_state.data_prompt,
+                        "ran_sql_only": False,
+                    }
+                )
+
+            st.session_state.query_runs[idx] = update_payload
+        except Exception as e:
+            error_details = display_enhanced_traceback(e)
+            st.session_state.query_runs[idx] = {
+                **run,
+                "status": "error",
+                "error_message": (
+                    error_details.get("message")
+                    if isinstance(error_details, dict)
+                    else "An error occurred."
+                ),
+                "exception_traceback": (
+                    error_details.get("traceback")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+                "error_exception": (
+                    error_details.get("exception_only")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+                "duration_s": (datetime.now() - start_time).total_seconds(),
+                "answered_at": datetime.now().strftime("%H:%M:%S"),
+            }
+
+    def _interpret_saved_result(self, idx: int, run: dict) -> None:
+        df = run.get("results_df")
+        if df is None:
+            df = st.session_state.get("results_df")
+        if df is None:
+            return
+        question = run.get("question", "")
+        start_time = datetime.now()
+        try:
             with track_step_and_log_cm("⏳ Generating answer..."):
                 answer, data_prompt = self.llm.question_about_data(question, df)
                 st.session_state.update(
@@ -191,20 +361,38 @@ class ChatbotApp:
                         "data_prompt": neat_prompt(data_prompt),
                     }
                 )
-                return {
-                    "question": question,
-                    "sql_query": st.session_state.sql_query,
-                    "sql_prompt": st.session_state.sql_prompt,
-                    "format_logs": st.session_state.format_logs,
-                    "results_df": df.copy() if isinstance(df, pd.DataFrame) else df,
-                    "data_prompt": st.session_state.data_prompt,
-                    "answer": answer,
-                    "dry_run": False,
-                    "duration_s": (datetime.now() - start_time).total_seconds(),
-                }
+            st.session_state.query_runs[idx] = {
+                **run,
+                "answer": answer,
+                "data_prompt": st.session_state.data_prompt,
+                "ran_sql_only": False,
+                "status": "complete",
+                "duration_s": (datetime.now() - start_time).total_seconds(),
+                "answered_at": datetime.now().strftime("%H:%M:%S"),
+            }
         except Exception as e:
-            display_enhanced_traceback(e)
-            return None
+            error_details = display_enhanced_traceback(e)
+            st.session_state.query_runs[idx] = {
+                **run,
+                "status": "error",
+                "error_message": (
+                    error_details.get("message")
+                    if isinstance(error_details, dict)
+                    else "An error occurred."
+                ),
+                "exception_traceback": (
+                    error_details.get("traceback")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+                "error_exception": (
+                    error_details.get("exception_only")
+                    if isinstance(error_details, dict)
+                    else None
+                ),
+                "duration_s": (datetime.now() - start_time).total_seconds(),
+                "answered_at": datetime.now().strftime("%H:%M:%S"),
+            }
 
     def _clear_previous_variables(self):
         for k in [
@@ -217,7 +405,14 @@ class ChatbotApp:
         ]:
             st.session_state[k] = None
 
-    def _handle_question(self, question, keep_context, use_supplied_sql, dry_run=False):
+    def _handle_question(
+        self,
+        question,
+        keep_context,
+        use_supplied_sql,
+        dry_run=False,
+        interpret_with_llm=True,
+    ):
         self._clear_previous_variables()
         if not keep_context:
             st.session_state.query_runs = []
@@ -231,6 +426,7 @@ class ChatbotApp:
                 "status": "pending",
                 "use_supplied_sql": use_supplied_sql,
                 "dry_run": dry_run,
+                "interpret_with_llm": interpret_with_llm,
                 "asked_at": asked_at,
                 "show_tabs": None,
                 "show_tabs_override": False,
@@ -259,19 +455,25 @@ class ChatbotApp:
                                     run.get("question", ""),
                                     run.get("use_supplied_sql", False),
                                     run.get("dry_run", False),
+                                    run.get("interpret_with_llm", True),
                                 )
                     finally:
                         st.session_state["suppress_sidebar_typewriter"] = (
                             previous_typewriter
                         )
                 if result:
+                    status = "error" if result.get("error_message") else "complete"
                     st.session_state.query_runs[idx] = {
                         **run,
                         **result,
-                        "status": "complete",
+                        "status": status,
                     }
                 else:
-                    st.session_state.query_runs[idx]["status"] = "error"
+                    st.session_state.query_runs[idx] = {
+                        **run,
+                        "status": "error",
+                        "error_message": "An error occurred.",
+                    }
                 st.rerun()
                 return
 
@@ -313,7 +515,10 @@ class ChatbotApp:
                         (
                             "🧮 Data",
                             lambda df=df: st.data_editor(
-                                df, use_container_width=True, num_rows="dynamic"
+                                df,
+                                use_container_width=True,
+                                num_rows="dynamic",
+                                key=f"data_editor_{idx}",
                             ),
                         )
                     )
@@ -356,14 +561,84 @@ class ChatbotApp:
                         with tab:
                             render()
 
+            format_error = run.get("error_traceback")
+            if format_error and run.get("status") != "error":
+                summary = format_error.strip().splitlines()[-1] if format_error else ""
+                headline = (
+                    f"SQL formatting error: {summary}"
+                    if summary
+                    else "SQL formatting error."
+                )
+                st.error(headline)
+                with st.expander("Show full formatting error details"):
+                    st.markdown(
+                        f"<pre style='color:red'>{format_error}</pre>",
+                        unsafe_allow_html=True,
+                    )
+
             answered_at = run.get("answered_at")
-            if not answered_at and (has_answer or run.get("dry_run")):
+            if not answered_at and (
+                has_answer
+                or run.get("dry_run")
+                or run.get("status") == "error"
+                or run.get("ran_sql_only")
+            ):
                 answered_at = datetime.now().strftime("%H:%M:%S")
                 st.session_state.query_runs[idx]["answered_at"] = answered_at
             if has_answer:
                 self._render_assistant_message(run["answer"], answered_at)
+            elif run.get("status") == "error":
+                error_message = run.get("error_message") or "An error occurred."
+                st.error(error_message)
+                exception_traceback = run.get("exception_traceback")
+                if exception_traceback:
+                    with st.expander("Show full error details"):
+                        st.markdown(
+                            f"<pre style='color:red'>{exception_traceback}</pre>",
+                            unsafe_allow_html=True,
+                        )
+                if answered_at:
+                    st.markdown(
+                        message_time_html(answered_at, "left"),
+                        unsafe_allow_html=True,
+                    )
+            elif run.get("ran_sql_only"):
+                st.markdown("*SQL executed. No LLM answer generated.*")
+                if st.button(
+                    "🧠 Interpret SQL result",
+                    key=f"interpret_sql_{idx}",
+                    help="Generate an answer from the existing query results.",
+                ):
+                    with st.spinner("Interpreting SQL result..."):
+                        self._interpret_saved_result(idx, run)
+                    st.rerun()
+                if answered_at:
+                    st.markdown(
+                        message_time_html(answered_at, "left"),
+                        unsafe_allow_html=True,
+                    )
             elif run.get("dry_run"):
                 st.markdown("*Dry run: SQL generated, not executed.*")
+                if run.get("sql_query"):
+                    if run.get("error_traceback"):
+                        st.warning(
+                            "SQL formatting failed; fix the query before running it."
+                        )
+                    else:
+                        if st.button(
+                            "▶️ Run SQL",
+                            key=f"run_sql_{idx}",
+                            help="Execute the generated SQL and answer the question.",
+                        ):
+                            with st.spinner("Running SQL query..."):
+                                self._execute_saved_sql(
+                                    idx,
+                                    run,
+                                    generate_answer=st.session_state.get(
+                                        "interpret_with_llm", True
+                                    ),
+                                )
+                            st.rerun()
                 if answered_at:
                     st.markdown(
                         message_time_html(answered_at, "left"),
@@ -451,10 +726,10 @@ class ChatbotApp:
             components.html(button_class_script_html(), height=0)
 
     def _render_query_options(self):
-        col_left, col_mid, col_right, col_tabs = st.columns([1, 1, 1, 1])
+        col_left, col_mid, col_right, col_tabs, col_llm = st.columns([1, 1, 1, 1, 1])
         with col_left:
             st.checkbox(
-                "Keep memory",
+                "Memory",
                 key="keep_context",
                 help=(
                     "When on, previous Q&A remain in chat history so "
@@ -463,7 +738,7 @@ class ChatbotApp:
             )
         with col_mid:
             st.checkbox(
-                "Show tabs",
+                "Tabs",
                 key="show_tabs",
                 help="Toggle the display of additional info tabs in the answer.",
             )
@@ -475,7 +750,13 @@ class ChatbotApp:
             )
         with col_tabs:
             st.checkbox(
-                "Supplied SQL",
+                "Interpret",
+                key="interpret_with_llm",
+                help="If enabled, the LLM will interpret query results.",
+            )
+        with col_llm:
+            st.checkbox(
+                "Use SQL",
                 key="use_supplied_sql",
                 help=(
                     "If checked, you can paste SQL instead of generating "
@@ -483,9 +764,50 @@ class ChatbotApp:
                 ),
             )
         components.html(toggle_class_script_html(), height=0)
+        components.html(copy_button_script_html(), height=0)
+        components.html(chat_input_reset_script_html(), height=0)
+
+    def _apply_model_selection(self, model_key: str) -> None:
+        if model_key not in MODEL_REGISTRY:
+            return
+        base_model = MODEL_REGISTRY[model_key]
+        inference_profile = getattr(self.llm.config, "bedrock_inference_profile_id", "")
+        if inference_profile:
+            model = replace(base_model, invoke_id=inference_profile)
+        else:
+            model = base_model
+        self.llm.config.bedrock_model_key = model_key
+        self.llm.config.bedrock_model = model
+        self.llm.sql_prompt.model = model
+
+    def _render_models_panel(self):
+        with st.sidebar.expander("🧠 Available models", expanded=False):
+            model_keys = list(MODEL_REGISTRY.keys())
+            if not model_keys:
+                st.markdown("_No models available_")
+                return
+            current_key = st.session_state.get(
+                "model_key", self.llm.config.bedrock_model_key
+            )
+            if current_key not in MODEL_REGISTRY:
+                current_key = model_keys[0]
+                st.session_state["model_key"] = current_key
+            selected_key = st.radio(
+                "Model",
+                model_keys,
+                key="model_key",
+                format_func=lambda k: f"{MODEL_REGISTRY[k].name}",
+                label_visibility="collapsed",
+            )
+            if selected_key != self.llm.config.bedrock_model_key:
+                self._apply_model_selection(selected_key)
 
     def _render_tables_panel(self):
         with st.sidebar.expander("📚 Available tables", expanded=False):
+            if not self.all_tables:
+                st.markdown("_No tables available_")
+                return
+
             if not st.session_state.get("tables_loaded"):
                 with st.spinner("Loading table schemas..."):
                     try:
@@ -493,40 +815,78 @@ class ChatbotApp:
                             "suppress_sidebar_typewriter", True
                         )
                         st.session_state["suppress_sidebar_typewriter"] = True
+                        original_tables = self.llm.backend.tables
+                        self.llm.backend.tables = self.all_tables
                         self.llm.backend.populate_schemas()
                         st.session_state.tables_loaded = True
                     except Exception as e:
                         st.warning(f"Could not load table schemas: {e}")
                     finally:
+                        self.llm.backend.tables = original_tables
                         st.session_state["suppress_sidebar_typewriter"] = (
                             previous_typewriter
                         )
-            tables = list(self.llm.tables)
-            for index, table in enumerate(tables):
-                st.markdown(f"**{table.name}**")
-                st.markdown(
-                    table_meta_html("catalog", table.catalog),
-                    unsafe_allow_html=True,
+
+            table_ids = [self._table_id(t) for t in self.all_tables]
+            if not st.session_state.get("tables_selection_initialized"):
+                st.session_state["selected_table_ids"] = list(table_ids)
+                st.session_state["tables_selection_initialized"] = True
+            selected_set = set(st.session_state.get("selected_table_ids", []))
+            updated_selected_ids: list[str] = []
+
+            for index, table in enumerate(self.all_tables):
+                table_id = table_ids[index]
+                checked_default = table_id in selected_set
+                checked_current = st.session_state.get(
+                    f"table_select_{index}", checked_default
                 )
-                st.markdown(
-                    table_meta_html("db", table.database),
-                    unsafe_allow_html=True,
-                )
-                if table.description:
-                    desc_html = self._format_table_description(table.description)
-                    st.markdown(
-                        table_desc_html(desc_html),
-                        unsafe_allow_html=True,
+                header_cols = st.columns([0.03, 0.97])
+                with header_cols[0]:
+                    checked = st.checkbox(
+                        "Use",
+                        key=f"table_select_{index}",
+                        value=checked_current,
+                        label_visibility="collapsed",
                     )
-                if isinstance(table.schema, dict) and table.schema:
-                    cols = "\n".join(
-                        f"- `{col}` ({dtype})" for col, dtype in table.schema.items()
-                    )
-                    st.markdown(cols)
-                else:
-                    st.markdown("_Schema not available_")
-                if len(tables) > 1 and index < len(tables) - 1:
-                    st.markdown("---")
+                with header_cols[1]:
+                    label = f"{table.name}"
+                    with st.expander(label, expanded=False):
+                        st.markdown(
+                            table_meta_html("catalog", table.catalog),
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            table_meta_html("db", table.database),
+                            unsafe_allow_html=True,
+                        )
+                        if table.description:
+                            desc_html = self._format_table_description(table.description)
+                            st.markdown(
+                                table_desc_html(desc_html),
+                                unsafe_allow_html=True,
+                            )
+                        if isinstance(table.schema, dict) and table.schema:
+                            cols = "\n".join(
+                                f"- `{col}` ({dtype})"
+                                for col, dtype in table.schema.items()
+                            )
+                            st.markdown(cols)
+                        else:
+                            st.markdown("_Schema not available_")
+                if checked:
+                    updated_selected_ids.append(table_id)
+
+            if not updated_selected_ids:
+                st.warning("No tables selected. SQL generation will not work.")
+
+            st.session_state["selected_table_ids"] = list(updated_selected_ids)
+            selected_tables = [
+                table
+                for table in self.all_tables
+                if self._table_id(table) in updated_selected_ids
+            ]
+            self.llm.tables = selected_tables
+            self.llm.backend.tables = selected_tables
 
     def _render_steps_taken(self):
         steps = st.session_state.get("steps_taken", [])
@@ -535,6 +895,10 @@ class ChatbotApp:
         if not render_sidebar_steps(steps):
             for step in steps:
                 st.sidebar.markdown(step)
+
+    @staticmethod
+    def _table_id(table) -> str:
+        return f"{table.catalog}.{table.database}.{table.name}"
 
     @staticmethod
     def _format_table_description(text: str) -> str:

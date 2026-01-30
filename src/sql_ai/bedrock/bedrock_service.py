@@ -42,9 +42,11 @@ class BedrockService:
         body = PromptBody(
             messages=[{"role": "user", "content": message}],
             max_tokens=model.max_tokens,
-            temperature=model.temperature,
-            top_p=model.top_p,
         )
+        if model.temperature is not None:
+            body["temperature"] = model.temperature
+        if model.top_p is not None:
+            body["top_p"] = model.top_p
         return BedrockService._ensure_provider_fields(body, model=model)
 
     @staticmethod
@@ -68,11 +70,19 @@ class BedrockService:
         """
         body = self._ensure_provider_fields(body, model=model)
 
-        response = self.client.invoke_model(
-            modelId=model.id,
-            body=json.dumps(dict(body)),
-            contentType="application/json",
-        )
+        try:
+            response = self.client.invoke_model(
+                modelId=model.invoke_model_id,
+                body=json.dumps(dict(body)),
+                contentType="application/json",
+            )
+        except Exception as e:
+            model_bits = [f"modelName={model.name}", f"modelId={model.invoke_model_id}"]
+            if model.invoke_model_id != model.id:
+                model_bits.append(f"baseModelId={model.id}")
+            raise RuntimeError(
+                "Bedrock invoke_model failed (" + ", ".join(model_bits) + f"): {e}"
+            ) from e
 
         response_body = json.loads(response["body"].read())
         return response_body["content"][0]["text"].strip()

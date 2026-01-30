@@ -27,10 +27,10 @@ cem_timetable_table = Table(
 )
 
 custom_guidelines = """
+In the `nrs_delays_ds_schedules_daily` table:
 - The 'loc' column tells you where a train was at the time.
 - The 'origin' and 'destination' columns tell you where the train originally departed and ultimately went on the journey
-- The loc column values DO NOT match the values in 'origin' or 'destination' columns, so they can't be compared directly
-- 'loc' values map to 'origin' and 'destination' values as follows:
+- 'loc' column values map to 'origin' and 'destination' column values as follows:
     'york' => 'YORK'
     'newcastle' => 'NWCSTLE'
     'peterborough' => 'PBRO'
@@ -40,7 +40,7 @@ custom_guidelines = """
     'durham' => 'DRHM'
     'doncaster' => 'DONC'
 - Be sure to allow for typos in user questions when matching location and station names
-- For example, people may refer to 'london kings cross' as 'king's cross', 'kings cross', 'london kx', etc.
+- For example, people may refer to 'london kings cross' as 'king's cross', 'kings cross', 'london kx', 'kgx', etc.
 - For example, people often misspell 'edinburgh' as 'edinburg', 'edinbrough', 'ednburgh', etc.
 
 - The `arrival_time`, `departure_time`, `start_datetime` and `end_datetime` columns have 'YYYY-MM-DD HH:MM:SS' format

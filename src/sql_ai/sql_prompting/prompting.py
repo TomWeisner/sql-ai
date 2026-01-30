@@ -23,9 +23,9 @@ class SQLPrompt(ABC):
     def build_prompt_body_for_sql(self, user_question, tables: list[Table]) -> PromptBody:
         model = self._require_model()
         prompt = self.general_context(user_question, tables)
-        prompt += self.additional_context()
         prompt += self.general_guidelines()
         prompt += self.additional_guidelines()
+        prompt += self.additional_context()
         body = BedrockService.build_body(message=prompt, model=model)
         return body
 
@@ -34,7 +34,7 @@ class SQLPrompt(ABC):
         return self.general_context_template.format(user_question, table_schema_context)
 
     def additional_context(self) -> str:
-        return ""
+        return getattr(self, "extra_context", "")
 
     def general_guidelines(self) -> str:
         return self.general_guidelines_text

@@ -167,6 +167,12 @@ class ChatbotApp:
                     )
 
             else:
+                if st.session_state.get("keep_context", True):
+                    self.llm.sql_prompt.extra_context = (
+                        self._build_previous_conversation_context(question)
+                    )
+                else:
+                    self.llm.sql_prompt.extra_context = ""
                 with track_step_and_log_cm("🧠 Converting natural language to SQL..."):
                     sql_result = self.llm.get_sql(
                         question, use_supplied_sql=use_supplied_sql
@@ -827,6 +833,15 @@ class ChatbotApp:
                             previous_typewriter
                         )
 
+            unique_tables = []
+            seen_ids = set()
+            for table in self.all_tables:
+                table_id = self._table_id(table)
+                if table_id in seen_ids:
+                    continue
+                seen_ids.add(table_id)
+                unique_tables.append(table)
+            self.all_tables = unique_tables
             table_ids = [self._table_id(t) for t in self.all_tables]
             if not st.session_state.get("tables_selection_initialized"):
                 st.session_state["selected_table_ids"] = list(table_ids)
@@ -899,6 +914,37 @@ class ChatbotApp:
     @staticmethod
     def _table_id(table) -> str:
         return f"{table.catalog}.{table.database}.{table.name}"
+
+    def _build_previous_conversation_context(
+        self, user_question: str, limit: int = 5
+    ) -> str:
+        runs = st.session_state.get("query_runs", [])
+        entries = []
+        final_message = f"\nNEXT QUESTION TO ANSWER: {user_question}\n"
+        if not runs:
+            return final_message
+        for run in runs:
+            if run.get("status") != "complete":
+                continue
+            question = run.get("question")
+            sql = run.get("sql_query")
+            answer = run.get("answer")
+            if not question:
+                continue
+            if sql or answer:
+                entries.append((question, sql, answer))
+        if not entries:
+            return final_message
+        entries = entries[-limit:]
+        lines = ["\nPREVIOUS CONVERSATION (oldest first)"]
+        for idx, (question, sql, answer) in enumerate(entries, start=1):
+            lines.append(f"\n{idx}. USER: {question}")
+            if sql:
+                lines.append(f"   SQL: {sql}")
+            if answer:
+                lines.append(f"   BOT: {answer}")
+        lines.append(final_message)
+        return "\n".join(lines)
 
     @staticmethod
     def _format_table_description(text: str) -> str:

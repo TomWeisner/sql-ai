@@ -35,6 +35,9 @@ class Table:
 
     def context(self):
         return (
-            f"###\nCatalog: {self.catalog}\nDatabase: {self.database}\nTable: {self.name}"
-            f'\nDescription: {self.description}\nSchema: {self.schema}\n#####"'
+            f"\n###\nCatalog: {self.catalog}"
+            f"\nDatabase: {self.database}"
+            f"\nTable: {self.name}"
+            f"\nDescription: {self.description}"
+            f"\nSchema: {self.schema}\n###"
         )

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-
 from sql_ai.streamlit.utils import render_sidebar_steps, set_sidebar_steps_placeholder
 
 

@@ -6,7 +6,6 @@ from dataclasses import replace
 from typing import cast
 
 import streamlit as st
-
 from sql_ai.bedrock.models import MODEL_REGISTRY
 from sql_ai.config import ModelKey
 from sql_ai.sql_llm import SqlLLM

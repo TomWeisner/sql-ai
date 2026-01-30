@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-
 from sql_ai.sql_backend.table import Table
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.ui_templates import table_desc_html, table_meta_html

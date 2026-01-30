@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.sidebar_models import render_models_panel
 from sql_ai.streamlit.sidebar_steps import init_steps_sidebar, render_steps_taken

@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 import streamlit as st
 import streamlit.components.v1 as components
-
 from sql_ai.streamlit.ui_templates import (
     chat_input_reset_script_html,
     copy_button_script_html,

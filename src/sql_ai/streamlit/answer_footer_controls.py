@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import streamlit as st
 import streamlit.components.v1 as components
-
 from sql_ai.streamlit.ui_templates import (
     button_class_script_html,
     tab_scroll_lock_script_html,

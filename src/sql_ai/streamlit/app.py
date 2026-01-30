@@ -10,7 +10,6 @@ streamlit run src/sql_ai/streamlit/entrypoint.py
 import logging
 
 import streamlit as st
-
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.answer_footer_controls import render_footer_controls
 from sql_ai.streamlit.conversation import render_conversation

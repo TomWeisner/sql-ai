@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Optional
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.streamlit.context_prompt import build_previous_conversation_context
 from sql_ai.streamlit.query_controls import QueryControls

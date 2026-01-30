@@ -6,8 +6,8 @@ from datetime import datetime
 from typing import Callable, Optional
 
 import pandas as pd
-import streamlit as st
 
+import streamlit as st
 from sql_ai.streamlit.ui_templates import (
     assistant_answer_html,
     message_time_html,

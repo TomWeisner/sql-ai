@@ -24,7 +24,7 @@ def test_sql_prompt_model_follows_config_choice():
     """Custom prompts should use the Config-selected Bedrock model."""
     config = _make_config()
     custom_prompt = SQLPrompt("ctx {}", "guidelines")
-    custom_prompt.model = MODEL_REGISTRY["claude-3"]
+    custom_prompt.model = MODEL_REGISTRY["claude-sonnet-3.0"]
 
     backend = MagicMock()
     backend.tables = []

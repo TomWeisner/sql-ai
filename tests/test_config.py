@@ -33,7 +33,7 @@ def test_default_config(default_config):
     assert default_config.aws_athena_s3_output_bucket == ""
     assert default_config.aws_athena_catalog == "awsdatacatalog"
     assert default_config.aws_athena_database == "default"
-    assert default_config.bedrock_model.name == "Claude 3.7"
+    assert default_config.bedrock_model.name == "Claude Sonnet 4.5"
     assert default_config.max_tokens == 2000
     assert default_config.temperature == 0.9
 
@@ -45,7 +45,7 @@ def test_custom_config(custom_config):
     assert custom_config.aws_athena_s3_output_bucket == "my-bucket"
     assert custom_config.aws_athena_catalog == "my-catalog"
     assert custom_config.aws_athena_database == "my-database"
-    assert custom_config.bedrock_model.name == "Claude 3.7"
+    assert custom_config.bedrock_model.name == "Claude Sonnet 4.5"
     assert custom_config.max_tokens == 1000
     assert custom_config.temperature == 0.5
 

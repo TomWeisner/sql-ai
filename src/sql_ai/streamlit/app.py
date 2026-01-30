@@ -212,7 +212,7 @@ class ChatbotApp:
                 st.session_state.results_df = df
 
             if interpret_with_llm:
-                with track_step_and_log_cm("⏳ Generating answer..."):
+                with track_step_and_log_cm("⏳ Interpreting data..."):
                     answer, data_prompt = self.llm.question_about_data(question, df)
                     st.session_state.update(
                         {

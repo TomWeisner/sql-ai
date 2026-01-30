@@ -26,7 +26,7 @@ class Model:
         return self.invoke_id or self.id
 
 
-claude_sonnet_3_model = Model(
+claude_sonnet_30_model = Model(
     name="Claude Sonnet 3", id="anthropic.claude-3-sonnet-20240229-v1:0"
 )
 
@@ -47,7 +47,7 @@ claude_opus_45_model = Model(
 )
 
 MODEL_REGISTRY = {
-    "claude-sonnet-3": claude_sonnet_3_model,
+    "claude-sonnet-3.0": claude_sonnet_30_model,
     "claude-sonnet-3.7": claude_sonnet_37_model,
     "claude-sonnet-4.5": claude_sonnet_45_model,
     "claude-opus-4.5": claude_opus_45_model,

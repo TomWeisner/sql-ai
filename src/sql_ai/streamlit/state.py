@@ -19,6 +19,7 @@ def init_session_state(default_question: str, llm: SqlLLM) -> None:
         "chat_history": [],
         "last_user_input": "",
         "default_question": effective_default,
+        "has_asked_question": False,
         "error_traceback": None,
         "retry_triggered": False,
         "sql_query": None,
@@ -41,7 +42,11 @@ def init_session_state(default_question: str, llm: SqlLLM) -> None:
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
-    if effective_default and "chat_input" not in st.session_state:
+    if (
+        effective_default
+        and not st.session_state.get("has_asked_question")
+        and "chat_input" not in st.session_state
+    ):
         st.session_state["chat_input"] = effective_default
 
 
@@ -57,6 +62,7 @@ def get_question(input_label: str) -> str | None:
     user_input = st.chat_input(input_label, key="chat_input")
     if user_input:
         st.session_state.last_user_input = user_input
+        st.session_state["has_asked_question"] = True
         st.session_state["steps_taken"] = []
         from sql_ai.streamlit.utils import render_sidebar_steps
 

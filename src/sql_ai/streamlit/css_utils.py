@@ -1,3 +1,5 @@
+"""CSS injection utilities for the Streamlit UI."""
+
 import streamlit as st
 
 
@@ -86,7 +88,7 @@ def inject_app_styles(chat_width: int = 640):
             background: #f6f7f9;
             border-radius: 999px;
             padding: 14px 16px;
-            margin: 6px 0 12px 0;
+            margin: 30px 0 10px 0;
             max-width: 100%;
         }}
         .user-row-wrap {{
@@ -113,10 +115,64 @@ def inject_app_styles(chat_width: int = 640):
         .message-time.right {{
             text-align: right;
             padding-right: 10px;
+            margin-top: 6px;
         }}
         .message-time.left {{
             text-align: left;
-            margin-top: -10px;
+            margin-top: 10px;
+        }}
+        .assistant-answer {{
+            background: transparent;
+            border: none;
+            border-left: none;
+            border-radius: 0;
+            padding: 0;
+            margin: 14px 0 18px 0;
+            color: #111827;
+            font-size: 1.02rem;
+            line-height: 1.55;
+            position: relative;
+        }}
+        .assistant-answer--pulse {{
+            animation: answerPulse 1.2s ease-out 1;
+        }}
+        div[data-testid="stVerticalBlock"] > div:has(.user-row-wrap) {{
+            margin-top: 0 !important;
+        }}
+        .status-banner {{
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin: 14px 0 18px 0;
+        }}
+        .status-warn {{
+            background: #fef9c3;
+            color: #92400e;
+        }}
+        .status-after-gap {{
+            height: 10px;
+        }}
+        .footer-controls-gap {{
+            height: 10px;
+        }}
+        .assistant-answer strong {{
+            color: #0f766e;
+        }}
+        @keyframes answerPulse {{
+            0% {{
+                background: rgba(134, 239, 172, 0.55);
+                border-radius: 12px;
+            }}
+            60% {{
+                background: rgba(134, 239, 172, 0.2);
+                border-radius: 12px;
+            }}
+            100% {{
+                background: transparent;
+                border-radius: 0;
+            }}
         }}
         .stCaption,
         .stCaption p {{
@@ -125,6 +181,17 @@ def inject_app_styles(chat_width: int = 640):
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] {{
             display: flex;
             justify-content: center;
+        }}
+        div[data-testid="stHorizontalBlock"] {{
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }}
+        div[data-testid="stHorizontalBlock"] + div {{
+            margin-top: 0 !important;
+            padding-top: 0 !important;
+        }}
+        div[data-testid="stVerticalBlock"] {{
+            gap: 0.35rem !important;
         }}
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] > label {{
             justify-content: center;
@@ -174,6 +241,9 @@ def inject_app_styles(chat_width: int = 640):
             border-radius: 6px;
             font-size: 0.85rem;
         }}
+        pre code {{
+            background: #f9fafb !important;
+        }}
         section[data-testid="stSidebar"] div[data-testid="stExpander"] > details {{
             background: #ffffff;
         }}
@@ -217,12 +287,23 @@ def inject_app_styles(chat_width: int = 640):
             white-space: nowrap;
             width: 100%;
         }}
+        .btn-clear,
+        .btn-retry,
+        .btn-tabs,
+        .btn-scroll,
+        .btn-action {{
+            border: none !important;
+            box-shadow: none !important;
+            outline: none !important;
+        }}
         button.btn-clear,
         button.btn-retry,
-        button.btn-tabs {{
-            border: none;
-            background: transparent;
-            box-shadow: none;
+        button.btn-tabs,
+        button.btn-scroll,
+        button.btn-action {{
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
             padding: 6px 8px;
             border-radius: 10px;
             font-size: 1rem;
@@ -230,6 +311,15 @@ def inject_app_styles(chat_width: int = 640):
             display: inline-flex;
             align-items: center;
             justify-content: center;
+        }}
+        button.footer-scroll-btn {{
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            display: inline-flex !important;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
         }}
         button.btn-clear:hover {{
             background: #fee2e2;
@@ -242,6 +332,41 @@ def inject_app_styles(chat_width: int = 640):
         button.btn-tabs:hover {{
             background: #e0f2fe;
             color: #0c4a6e;
+        }}
+        button.btn-scroll:hover {{
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }}
+        button.btn-action:hover {{
+            background: #e0f2fe;
+            color: #0c4a6e;
+        }}
+        button.btn-action {{
+            font-size: 0.82rem;
+        }}
+        button.btn-action-run,
+        button.btn-action-interpret {{
+            background: #ecfccb !important;
+            color: #166534;
+            border-radius: 999px;
+            padding: 6px 12px;
+        }}
+        button.btn-action-run:hover,
+        button.btn-action-interpret:hover {{
+            background: #d9f99d !important;
+            color: #14532d;
+        }}
+        button.btn-scroll {{
+            font-size: 0.78rem;
+        }}
+        button.btn-busy {{
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: wait;
+        }}
+        button.btn-busy:hover {{
+            background: #f3f4f6;
+            color: #6b7280;
         }}
         button.copied {{
             position: relative;
@@ -260,6 +385,24 @@ def inject_app_styles(chat_width: int = 640):
             border-radius: 999px;
             white-space: nowrap;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+        }}
+        .question-anchor {{
+            height: 0;
+            scroll-margin-top: 16px;
+            margin: 0;
+            padding: 0;
+            line-height: 0;
+            display: block;
+        }}
+        div[data-testid="stVerticalBlock"] > div:has(.question-anchor) {{
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 0 !important;
+        }}
+        div[data-testid="stVerticalBlock"] > div:has(.question-anchor) > div {{
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 0 !important;
         }}
         div[data-testid="stExpander"] {{
             border: 1px solid #e5e7eb;

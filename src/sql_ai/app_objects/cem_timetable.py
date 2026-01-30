@@ -30,15 +30,15 @@ custom_guidelines = """
 In the `nrs_delays_ds_schedules_daily` table:
 - The 'loc' column tells you where a train was at the time.
 - The 'origin' and 'destination' columns tell you where the train originally departed and ultimately went on the journey
-- 'loc' column values map to 'origin' and 'destination' column values as follows:
-    'york' => 'YORK'
-    'newcastle' => 'NWCSTLE'
-    'peterborough' => 'PBRO'
-    'edinburgh' => 'EDINBUR'
-    'london kings cross' => 'KNGX'
-    'leeds' => 'LEEDS'
-    'durham' => 'DRHM'
-    'doncaster' => 'DONC'
+- Actual cities map to 'loc', 'origin' and 'destination' column values as follows:
+    'York' => 'YORK'
+    'Newcastle' => 'NWCSTLE'
+    'Peterborough' => 'PBRO'
+    'Edinburgh' => 'EDINBUR'
+    'London Kings Cross' => 'KNGX'
+    'Leeds' => 'LEEDS'
+    'Durham' => 'DRHM'
+    'Doncaster' => 'DONC'
 - Be sure to allow for typos in user questions when matching location and station names
 - For example, people may refer to 'london kings cross' as 'king's cross', 'kings cross', 'london kx', 'kgx', etc.
 - For example, people often misspell 'edinburgh' as 'edinburg', 'edinbrough', 'ednburgh', etc.

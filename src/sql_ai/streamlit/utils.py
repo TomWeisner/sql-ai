@@ -1,3 +1,5 @@
+"""Streamlit utility helpers for prompts, steps, and tracebacks."""
+
 import json
 import re
 import sys

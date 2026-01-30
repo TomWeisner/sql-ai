@@ -1,6 +1,13 @@
 import nox_poetry
 
 
+# Formatting
+@nox_poetry.session(tags=["style", "fix"])
+def format(session: nox_poetry.Session) -> None:
+    session.install("black")
+    session.run("black", "src", "tests")
+
+
 # Linting
 @nox_poetry.session(tags=["style"])
 def lint(session: nox_poetry.Session) -> None:
@@ -13,13 +20,6 @@ def lint(session: nox_poetry.Session) -> None:
 def isort(session: nox_poetry.Session) -> None:
     session.install("isort")
     session.run("isort", "src", "tests")
-
-
-# Formatting
-@nox_poetry.session(tags=["style", "fix"])
-def format(session: nox_poetry.Session) -> None:
-    session.install("black")
-    session.run("black", "src", "tests")
 
 
 # Type checking

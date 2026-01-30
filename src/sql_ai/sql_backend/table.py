@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional
 
 SchemaType = dict[str, str]
 
@@ -8,6 +8,7 @@ SchemaType = dict[str, str]
 class Table:
     name: str
     description: Optional[str] = None
+    storage_platform: Literal["Athena", "Redshift"] = "Athena"
     catalog: Optional[str] = "awsdatacatalog"
     database: str = "default"
     schema: Optional[SchemaType] = None
@@ -20,6 +21,12 @@ class Table:
 
         if self.schema is not None and not isinstance(self.schema, dict):
             raise TypeError("Table.schema must be a dict mapping column -> datatype.")
+
+        if self.storage_platform not in ["Athena", "Redshift"]:
+            raise ValueError(
+                "Table.storage_platform must be either 'Athena' or 'Redshift'"
+                f", got {self.storage_platform}"
+            )
 
     def qualified_name(self):
         """dialect-specific qualified identifier."""
@@ -34,10 +41,20 @@ class Table:
         return f"`{self.catalog}`.`{self.database}`.`{self.name}`"
 
     def context(self):
-        return (
-            f"\n###\nCatalog: {self.catalog}"
-            f"\nDatabase: {self.database}"
-            f"\nTable: {self.name}"
-            f"\nDescription: {self.description}"
-            f"\nSchema: {self.schema}\n###"
+        platform = (self.storage_platform or "").lower()
+        lines = [
+            "###",
+            f"Platform: {platform.title()}",
+        ]
+        if platform == "athena":
+            lines.append(f"Catalog: {self.catalog}")
+        lines.extend(
+            [
+                f"Database: {self.database}",
+                f"Table: {self.name}",
+                f"Description: {self.description}",
+                f"Schema: {self.schema}",
+                "###",
+            ]
         )
+        return "\n" + "\n".join(lines)

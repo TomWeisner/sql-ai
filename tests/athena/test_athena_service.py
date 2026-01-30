@@ -84,6 +84,7 @@ def test_run_query(athena_backend, mock_athena_client):
         "ResultSet": {
             "ResultSetMetadata": {"ColumnInfo": [{"Label": "column1"}]},
             "Rows": [
+                {"Data": [{"VarCharValue": "column1"}]},
                 {"Data": [{"VarCharValue": "value1"}]},
                 {"Data": [{"VarCharValue": "value2"}]},
             ],

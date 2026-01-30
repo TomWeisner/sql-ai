@@ -55,6 +55,23 @@ class BedrockService:
         if data.shape[0] == 0:
             return "No data found."
 
+        columns = list(data.columns)
+        column_labels = [str(column) for column in columns]
+        rename_map: dict[object, str] = {}
+        if column_labels and all(label.startswith("_col") for label in column_labels):
+            if len(columns) == 1:
+                rename_map[columns[0]] = "result"
+            else:
+                rename_map = {
+                    column: f"col{idx + 1}" for idx, column in enumerate(columns)
+                }
+        else:
+            for idx, (column, label) in enumerate(zip(columns, column_labels)):
+                if not label or label.startswith("_col"):
+                    rename_map[column] = f"col{idx + 1}"
+        if rename_map:
+            data = data.rename(columns=rename_map)
+
         lines = ["Here is the query result data:"]
         for row in data.to_dict(orient="records"):
             lines.append(", ".join(f"{k}: {v}" for k, v in row.items()))

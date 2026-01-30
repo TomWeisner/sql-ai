@@ -37,7 +37,7 @@ All sessions can be run together with `nox`
 It is recommended to run `nox` successfully before pushing.
 
 ## For analysts (using the app)
-- Launch the UI: `streamlit run src/sql_ai/streamlit/app.py` from the repo root.
+- Launch the UI: `streamlit run src/sql_ai/streamlit/entrypoint.py` from the repo root.
 - Ask questions: type a natural-language question in the Streamlit input; the app generates SQL, executes it, and shows an answer.
 - Inspect the result: expand the tabs to see the SQL, formatting changes, data, and prompts that drove the answer.
 - Export: use the download button in the “Data” tab to export the result set as CSV.
@@ -62,12 +62,12 @@ It is recommended to run `nox` successfully before pushing.
 
 Enter venv, then:
 
-`streamlit run src/sql_ai/streamlit/app.py`
+`streamlit run src/sql_ai/streamlit/entrypoint.py`
 
 
 ## Architecture overview
 
-When `streamlit/app.py` runs it wires together a few layers:
+When `streamlit/entrypoint.py` runs it wires together a few layers:
 
 App objects: `src/sql_ai/app_objects/...`
 - tables: define which tables (with associated catalog/database/name/description/schema) are exposed

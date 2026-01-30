@@ -86,9 +86,11 @@ class AthenaBackend(SqlBackend):
         rows = self._fetch_results(query=query, limit=limit)
         if not rows:
             return pd.DataFrame()
-        if len(rows) == 1 and len(rows[0]) == 1:
-            return pd.DataFrame(rows, columns=["_col0"])
-        return pd.DataFrame(rows[1:], columns=rows[0])
+        columns = rows[0]
+        data_rows = rows[1:]
+        if not data_rows:
+            return pd.DataFrame(columns=columns)
+        return pd.DataFrame(data_rows, columns=columns)
 
     @track_step_and_log("🔍 Getting schemas for tables")
     def populate_schemas(self) -> Sequence[Table]:
@@ -139,12 +141,15 @@ class AthenaBackend(SqlBackend):
                 continue
             lines_out.append(line.strip())
 
+        print(f"Extracted DDL lines:\n{lines_out}")
+
         cleaned = "\n".join(lines_out).strip()
         cleaned = (
             cleaned.replace("CREATE TABLE", "")
             .replace("CREATE EXTERNAL TABLE", "")
             .strip()
         )
+        print(f"Cleaned DDL for schema extraction:\n{cleaned}")
         return self._ddl_to_schema(cleaned)
 
     def _ddl_to_schema(self, ddl: str) -> dict[str, str]:
@@ -154,13 +159,15 @@ class AthenaBackend(SqlBackend):
         """
         start = ddl.find("(")
         end = ddl.rfind(")")
-        if start == -1 or end == -1 or end <= start:
+        if start != -1 and end != -1 and end > start:
+            body = ddl[start + 1 : end]  # noqa: E203  (black slice spacing)
+        else:
+            body = ddl[:end] if end != -1 else ddl
+        if not body.strip():
             return {}
-
-        body = ddl[start + 1 : end]  # noqa: E203  (black slice spacing)
         columns: dict[str, str] = {}
         for raw_line in body.split(","):
-            line = raw_line.strip()
+            line = raw_line.strip().rstrip(")")
             if not line:
                 continue
             parts = line.split()
@@ -221,6 +228,8 @@ class AthenaBackend(SqlBackend):
                 first_page = False
                 cols = [c["Label"] for c in result_set["ResultSetMetadata"]["ColumnInfo"]]
                 rows.append(cols)
+                if result_rows:
+                    result_rows = result_rows[1:]
 
             for r in result_rows:
                 vals = [self._parse_value(f.get("VarCharValue", "")) for f in r["Data"]]

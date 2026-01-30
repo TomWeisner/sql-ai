@@ -95,9 +95,11 @@ class RedshiftBackend(SqlBackend):
         rows = self._fetch_results(query=query, limit=limit)
         if not rows:
             return pd.DataFrame()
-        if len(rows) == 1 and len(rows[0]) == 1:
-            return pd.DataFrame(rows, columns=["_col0"])
-        return pd.DataFrame(rows[1:], columns=rows[0])
+        columns = rows[0]
+        data_rows = rows[1:]
+        if not data_rows:
+            return pd.DataFrame(columns=columns)
+        return pd.DataFrame(data_rows, columns=columns)
 
     @track_step_and_log("🔍 Getting schemas for tables")
     def populate_schemas(self) -> Sequence[Table]:

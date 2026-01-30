@@ -1,3 +1,10 @@
+"""
+Streamlit-safe access helpers.
+
+These functions let non-UI code check whether a Streamlit runtime context is
+active before calling Streamlit APIs.
+"""
+
 from __future__ import annotations
 
 import os

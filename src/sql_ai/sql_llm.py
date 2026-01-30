@@ -116,4 +116,32 @@ class SqlLLM:
         return answer, body
 
     def run_query(self, query: str) -> pd.DataFrame:
-        return self.backend.run_query(query)
+        cleaned = self._clean_query_prefix(query)
+        self._assert_select_query(cleaned)
+        return self.backend.run_query(cleaned)
+
+    @staticmethod
+    def _assert_select_query(query: str) -> None:
+        """Require queries to begin with SELECT or WITH (for CTEs)."""
+        stripped = query.lstrip().lstrip("`(")
+        lowered = stripped.lower()
+        if not lowered.startswith(("select", "with")):
+            raise ValueError(
+                "Only SELECT statements are allowed (CTEs starting with WITH are fine). "
+                "Received query:\n"
+                f"{query}"
+            )
+
+    @staticmethod
+    def _clean_query_prefix(query: str) -> str:
+        """
+        Remove common leading wrappers like backticks and a leading 'sql' token.
+        """
+        cleaned = query.strip()
+        # strip enclosing backticks or quotes
+        if cleaned.startswith(("`", '"')) and cleaned.endswith(("`", '"')):
+            cleaned = cleaned[1:-1].strip()
+        lowered = cleaned.lower()
+        if lowered.startswith("sql"):
+            cleaned = cleaned[3:].lstrip(" :\n\t")
+        return cleaned

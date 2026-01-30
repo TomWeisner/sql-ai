@@ -1,4 +1,13 @@
+"""
+Streamlit-safe access helpers.
+
+These functions let non-UI code check whether a Streamlit runtime context is
+active before calling Streamlit APIs.
+"""
+
 from __future__ import annotations
+
+import os
 
 try:
     import streamlit  # type: ignore
@@ -11,6 +20,8 @@ def st_if_ctx():
     Return the `streamlit` module if a ScriptRunContext exists; else None.
     Works across Streamlit versions.
     """
+    if os.getenv("SQL_AI_CLI_MODE") == "1":
+        return None
     try:
         try:
             # Newer path

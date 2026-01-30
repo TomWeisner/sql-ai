@@ -2,10 +2,13 @@
 
 from typing import cast
 
-from sql_ai.athena.athena_backend import AthenaBackend
-from sql_ai.athena.prompt_defaults import ATHENA_CONTEXT_TEMPLATE, ATHENA_GUIDELINES
 from sql_ai.config import Config
 from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
+from sql_ai.sql_backends.athena.prompt_defaults import (
+    ATHENA_CONTEXT_TEMPLATE,
+    ATHENA_GUIDELINES,
+)
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.sql_prompting.prompting import (
     SQLPrompt,
@@ -41,7 +44,7 @@ PixarConfig = Config(
     aws_region="eu-west-2",
     aws_athena_s3_output_bucket="athena-output-688357424058",
     aws_profile="personal",
-    bedrock_model_key="claude-3.7",
+    bedrock_model_key="claude-sonnet-3.7",
     max_tokens=2000,
     temperature=0.9,
     aws_athena_catalog=cast(str, pixar_films_table.catalog),

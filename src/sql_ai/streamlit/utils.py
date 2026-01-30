@@ -1,3 +1,5 @@
+"""Streamlit utility helpers for prompts, steps, and tracebacks."""
+
 import json
 import re
 import sys
@@ -8,6 +10,20 @@ try:
     import streamlit as st  # type: ignore
 except ModuleNotFoundError:  # Streamlit is optional for non-UI contexts.
     st = None  # type: ignore
+
+_SIDEBAR_STEPS_PLACEHOLDER = None
+
+
+def set_sidebar_steps_placeholder(placeholder):
+    global _SIDEBAR_STEPS_PLACEHOLDER
+    _SIDEBAR_STEPS_PLACEHOLDER = placeholder
+
+
+def render_sidebar_steps(steps: list[str]) -> bool:
+    if st is None or _SIDEBAR_STEPS_PLACEHOLDER is None:
+        return False
+    _SIDEBAR_STEPS_PLACEHOLDER.markdown("\n\n".join(steps))
+    return True
 
 
 def neat_prompt(prompt: dict) -> str:
@@ -25,11 +41,24 @@ def sidebar_typewriter(text: str, speed: float = 0.005):
     if st is None:
         print(text)
         return
-    container = st.sidebar.empty()
+    if _SIDEBAR_STEPS_PLACEHOLDER is None:
+        container = st.sidebar.empty()
+        typed = ""
+        for char in text:
+            typed += char
+            container.markdown(f"{typed}")
+            time.sleep(speed)
+        return
+
+    steps = st.session_state.get("steps_taken", [])
+    prefix = "\n\n".join(steps[:-1])
     typed = ""
     for char in text:
         typed += char
-        container.markdown(f"{typed}")
+        if prefix:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(f"{prefix}\n\n{typed}")
+        else:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(typed)
         time.sleep(speed)
 
 
@@ -56,12 +85,9 @@ def print_message(
 
 def display_enhanced_traceback(
     e: Exception,
-    user_message: str = "An error occurred.",
+    user_message: str | None = None,
     project_identifier: str = "sql_ai.",
 ):
-    if st is None:
-        traceback.print_exc()
-        return
     # 1. Get traceback and format it
     tb = traceback.extract_tb(sys.exc_info()[2])
     formatted_trace = traceback.format_exc()
@@ -93,15 +119,25 @@ def display_enhanced_traceback(
             )
 
     # 3. Highlight root exception message (last line of the trace)
-    # Extract clean root exception (last line)
     tbe = traceback.TracebackException.from_exception(e)
-    exception_only = "".join(
-        tbe.format_exception_only()
-    ).strip()  # e.g. "TypeError: something bad"
-    highlighted_trace = highlighted_trace.replace(
-        exception_only, f"<b>{exception_only}</b>"
-    )
+    exception_only = "".join(tbe.format_exception_only()).strip()
+    if exception_only:
+        highlighted_trace = highlighted_trace.replace(
+            exception_only, f"<b>{exception_only}</b>"
+        )
+
     # 4. Show user-facing error and expandable details
+    if user_message is None:
+        user_message = exception_only or "An error occurred."
+
+    if st is None:
+        traceback.print_exc()
+        return {
+            "message": user_message,
+            "traceback": highlighted_trace,
+            "exception_only": exception_only,
+        }
+
     st.error(user_message)
 
     with st.expander("Show full error details"):
@@ -109,3 +145,9 @@ def display_enhanced_traceback(
             f"<pre style='color:red'>{highlighted_trace}</pre>",
             unsafe_allow_html=True,
         )
+
+    return {
+        "message": user_message,
+        "traceback": highlighted_trace,
+        "exception_only": exception_only,
+    }

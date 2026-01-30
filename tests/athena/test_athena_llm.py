@@ -1,3 +1,5 @@
+"""Tests for SqlLLM behavior specific to Athena setup/model selection."""
+
 from unittest.mock import MagicMock
 
 from sql_ai.bedrock.models import MODEL_REGISTRY
@@ -6,7 +8,7 @@ from sql_ai.sql_llm import SqlLLM
 from sql_ai.sql_prompting.prompting import SQLPrompt
 
 
-def _make_config(model_key: ModelKey = "claude-4.5") -> Config:
+def _make_config(model_key: ModelKey = "claude-sonnet-4.5") -> Config:
     return Config(
         aws_profile="test-profile",
         aws_account_id="123456789012",
@@ -22,7 +24,7 @@ def test_sql_prompt_model_follows_config_choice():
     """Custom prompts should use the Config-selected Bedrock model."""
     config = _make_config()
     custom_prompt = SQLPrompt("ctx {}", "guidelines")
-    custom_prompt.model = MODEL_REGISTRY["claude-3"]
+    custom_prompt.model = MODEL_REGISTRY["claude-sonnet-3.0"]
 
     backend = MagicMock()
     backend.tables = []

@@ -1,14 +1,17 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Literal, Optional
+
+SchemaType = dict[str, str]
 
 
 @dataclass
 class Table:
     name: str
     description: Optional[str] = None
+    storage_platform: Literal["Athena", "Redshift"] = "Athena"
     catalog: Optional[str] = "awsdatacatalog"
     database: str = "default"
-    schema: Optional[str] = None
+    schema: Optional[SchemaType] = None
 
     def __post_init__(self):
         if not self.description:
@@ -16,17 +19,14 @@ class Table:
         if self.catalog is None:
             self.catalog = "awsdatacatalog"
 
-        if isinstance(self.schema, list):
-            dict_schema = {}
-            for column in self.schema:
-                column = column.strip()
-                if "(" not in column or not column.endswith(")"):
-                    raise ValueError(
-                        f"Invalid format: '{column}', expecting 'column_name (data_type)'"
-                    )
-                name, datatype = column[:-1].split("(", 1)
-                dict_schema[name.strip()] = datatype.strip()
-            self.schema = dict_schema
+        if self.schema is not None and not isinstance(self.schema, dict):
+            raise TypeError("Table.schema must be a dict mapping column -> datatype.")
+
+        if self.storage_platform not in ["Athena", "Redshift"]:
+            raise ValueError(
+                "Table.storage_platform must be either 'Athena' or 'Redshift'"
+                f", got {self.storage_platform}"
+            )
 
     def qualified_name(self):
         """dialect-specific qualified identifier."""
@@ -41,7 +41,20 @@ class Table:
         return f"`{self.catalog}`.`{self.database}`.`{self.name}`"
 
     def context(self):
-        return (
-            f"###\nCatalog: {self.catalog}\nDatabase: {self.database}\nTable: {self.name}"
-            f'\nDescription: {self.description}\nSchema: {self.schema}\n#####"'
+        platform = (self.storage_platform or "").lower()
+        lines = [
+            "###",
+            f"Platform: {platform.title()}",
+        ]
+        if platform == "athena":
+            lines.append(f"Catalog: {self.catalog}")
+        lines.extend(
+            [
+                f"Database: {self.database}",
+                f"Table: {self.name}",
+                f"Description: {self.description}",
+                f"Schema: {self.schema}",
+                "###",
+            ]
         )
+        return "\n" + "\n".join(lines)

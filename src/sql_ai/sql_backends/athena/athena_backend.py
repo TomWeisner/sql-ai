@@ -7,11 +7,18 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
-from sql_ai.athena.prompt_defaults import ATHENA_CONTEXT_TEMPLATE, ATHENA_GUIDELINES
-from sql_ai.athena.sql_formatting.clean_fixing import SQLAthenaCompliance
-from sql_ai.athena.sql_formatting.clean_standardising import SQLStandards
 from sql_ai.sql_backend.base import SqlBackend
 from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.athena.prompt_defaults import (
+    ATHENA_CONTEXT_TEMPLATE,
+    ATHENA_GUIDELINES,
+)
+from sql_ai.sql_backends.athena.sql_formatting.athena_compliance import (
+    SQLAthenaCompliance,
+)
+from sql_ai.sql_backends.athena.sql_formatting.athena_style_standards import (
+    SQLAthenaStandards,
+)
 from sql_ai.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
 from sql_ai.tracking.decorator import track_step_and_log
 
@@ -50,7 +57,7 @@ class AthenaBackend(SqlBackend):
         self.sql_formatter = SQLFormatting(
             [
                 ("Athena fixing", SQLAthenaCompliance()),
-                ("SQL standards", SQLStandards()),
+                ("SQL standards", SQLAthenaStandards()),
             ],
             metadata_describer=self,
         )
@@ -79,9 +86,11 @@ class AthenaBackend(SqlBackend):
         rows = self._fetch_results(query=query, limit=limit)
         if not rows:
             return pd.DataFrame()
-        if len(rows) == 1 and len(rows[0]) == 1:
-            return pd.DataFrame(rows, columns=["_col0"])
-        return pd.DataFrame(rows[1:], columns=rows[0])
+        columns = rows[0]
+        data_rows = rows[1:]
+        if not data_rows:
+            return pd.DataFrame(columns=columns)
+        return pd.DataFrame(data_rows, columns=columns)
 
     @track_step_and_log("🔍 Getting schemas for tables")
     def populate_schemas(self) -> Sequence[Table]:
@@ -99,7 +108,7 @@ class AthenaBackend(SqlBackend):
         # skip header; each following row has the single DDL string
         return "\n".join((row[0] or "") for row in rows[1:])
 
-    def get_schema_from_athena(self, table: Table) -> str:
+    def get_schema_from_athena(self, table: Table) -> dict[str, str]:
         if not table.name:
             raise ValueError("Table name is required")
         if not table.database:
@@ -133,11 +142,38 @@ class AthenaBackend(SqlBackend):
             lines_out.append(line.strip())
 
         cleaned = "\n".join(lines_out).strip()
-        return (
+        cleaned = (
             cleaned.replace("CREATE TABLE", "")
             .replace("CREATE EXTERNAL TABLE", "")
             .strip()
         )
+        return self._ddl_to_schema(cleaned)
+
+    def _ddl_to_schema(self, ddl: str) -> dict[str, str]:
+        """
+        Convert a simplified Athena DDL string to a mapping of column -> datatype.
+        Falls back to an empty dict if parsing fails.
+        """
+        start = ddl.find("(")
+        end = ddl.rfind(")")
+        if start != -1 and end != -1 and end > start:
+            body = ddl[start + 1 : end]  # noqa: E203  (black slice spacing)
+        else:
+            body = ddl[:end] if end != -1 else ddl
+        if not body.strip():
+            return {}
+        columns: dict[str, str] = {}
+        for raw_line in body.split(","):
+            line = raw_line.strip().rstrip(")")
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) < 2:
+                continue
+            col_name = parts[0].strip('`"')
+            datatype = parts[1]
+            columns[col_name] = datatype
+        return columns
 
     def _fetch_results(
         self, *, query: str, limit: Optional[int] = None
@@ -165,7 +201,9 @@ class AthenaBackend(SqlBackend):
                 "StateChangeReason", "No reason provided"
             )
             raise RuntimeError(
-                f"Athena query failed with status: {status}\nReason: {reason}"
+                f"Athena query failed with status: {status}\n"
+                f"Reason: {reason}\n"
+                f"Query:\n{q}"
             )
 
         rows: list[list[Any]] = []
@@ -187,6 +225,8 @@ class AthenaBackend(SqlBackend):
                 first_page = False
                 cols = [c["Label"] for c in result_set["ResultSetMetadata"]["ColumnInfo"]]
                 rows.append(cols)
+                if result_rows:
+                    result_rows = result_rows[1:]
 
             for r in result_rows:
                 vals = [self._parse_value(f.get("VarCharValue", "")) for f in r["Data"]]

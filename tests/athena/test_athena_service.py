@@ -1,11 +1,12 @@
-# tests/test_athena_service.py
+"""Tests for AthenaBackend schema population and query execution."""
+
 from unittest.mock import MagicMock
 
 import pandas as pd
 import pytest
 
-from sql_ai.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 
 
 @pytest.fixture
@@ -52,7 +53,7 @@ def test_populate_schemas_single_table(athena_backend, mock_athena_client):
 
     athena_backend.tables[0].schema = None
     athena_backend.populate_schemas()
-    assert "station_name" in athena_backend.tables[0].schema
+    assert athena_backend.tables[0].schema == {"station_name": "string"}
 
 
 def test_get_schema_from_athena_nonexistent_table(athena_backend, mock_athena_client):
@@ -83,6 +84,7 @@ def test_run_query(athena_backend, mock_athena_client):
         "ResultSet": {
             "ResultSetMetadata": {"ColumnInfo": [{"Label": "column1"}]},
             "Rows": [
+                {"Data": [{"VarCharValue": "column1"}]},
                 {"Data": [{"VarCharValue": "value1"}]},
                 {"Data": [{"VarCharValue": "value2"}]},
             ],

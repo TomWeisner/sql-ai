@@ -42,9 +42,11 @@ class BedrockService:
         body = PromptBody(
             messages=[{"role": "user", "content": message}],
             max_tokens=model.max_tokens,
-            temperature=model.temperature,
-            top_p=model.top_p,
         )
+        if model.temperature is not None:
+            body["temperature"] = model.temperature
+        if model.top_p is not None:
+            body["top_p"] = model.top_p
         return BedrockService._ensure_provider_fields(body, model=model)
 
     @staticmethod
@@ -52,6 +54,23 @@ class BedrockService:
         """Serialize a small tabular result into a compact text snippet."""
         if data.shape[0] == 0:
             return "No data found."
+
+        columns = list(data.columns)
+        column_labels = [str(column) for column in columns]
+        rename_map: dict[object, str] = {}
+        if column_labels and all(label.startswith("_col") for label in column_labels):
+            if len(columns) == 1:
+                rename_map[columns[0]] = "result"
+            else:
+                rename_map = {
+                    column: f"col{idx + 1}" for idx, column in enumerate(columns)
+                }
+        else:
+            for idx, (column, label) in enumerate(zip(columns, column_labels)):
+                if not label or label.startswith("_col"):
+                    rename_map[column] = f"col{idx + 1}"
+        if rename_map:
+            data = data.rename(columns=rename_map)
 
         lines = ["Here is the query result data:"]
         for row in data.to_dict(orient="records"):
@@ -68,11 +87,19 @@ class BedrockService:
         """
         body = self._ensure_provider_fields(body, model=model)
 
-        response = self.client.invoke_model(
-            modelId=model.id,
-            body=json.dumps(dict(body)),
-            contentType="application/json",
-        )
+        try:
+            response = self.client.invoke_model(
+                modelId=model.invoke_model_id,
+                body=json.dumps(dict(body)),
+                contentType="application/json",
+            )
+        except Exception as e:
+            model_bits = [f"modelName={model.name}", f"modelId={model.invoke_model_id}"]
+            if model.invoke_model_id != model.id:
+                model_bits.append(f"baseModelId={model.id}")
+            raise RuntimeError(
+                "Bedrock invoke_model failed (" + ", ".join(model_bits) + f"): {e}"
+            ) from e
 
         response_body = json.loads(response["body"].read())
         return response_body["content"][0]["text"].strip()

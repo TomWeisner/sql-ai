@@ -1,10 +1,10 @@
 import re
 from typing import Callable, Optional
 
-from sql_ai.sql_formatting.clean_base import SQLCleaning
+from sql_ai.sql_formatting.formatter_base import SQLFormatter
 
 
-class SQLStandards(SQLCleaning):
+class SQLAthenaStandards(SQLFormatter):
     """Standardise SQL queries. Styling, spacing, etc."""
 
     def __init__(self, nickname: str = "🤓 Standardising styling") -> None:
@@ -16,7 +16,7 @@ class SQLStandards(SQLCleaning):
             self.align_fields,
         ]
 
-    @SQLCleaning.auto_log_replacements("Replacing JOIN with INNER JOIN")
+    @SQLFormatter.auto_log_replacements("Replacing JOIN with INNER JOIN")
     def replace_plain_join_with_inner_join(self, *args) -> tuple[str, Callable]:
         # Match 'JOIN' not preceded by INNER, LEFT, RIGHT, FULL, OUTER, or CROSS
         pattern = r"""
@@ -34,7 +34,7 @@ class SQLStandards(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements(
+    @SQLFormatter.auto_log_replacements(
         "Align fields in SELECT / GROUP BY / ORDER BY blocks"
     )
     def align_fields(self, *args) -> tuple[str, Callable]:
@@ -99,7 +99,7 @@ class SQLStandards(SQLCleaning):
 
         return pattern, replacer_func
 
-    @SQLCleaning.auto_log_replacements("Ensure KEYWORD indents")
+    @SQLFormatter.auto_log_replacements("Ensure KEYWORD indents")
     def pad_keywords_basic(self, *args) -> tuple[str, Callable]:
         clause_keywords = [
             # "ORDER BY",
@@ -162,7 +162,7 @@ class SQLStandards(SQLCleaning):
 
         return pattern, replacer
 
-    @SQLCleaning.auto_log_replacements("Padding ANDs in BETWEEN clauses")
+    @SQLFormatter.auto_log_replacements("Padding ANDs in BETWEEN clauses")
     def pad_ands_in_between_clauses(self, *args) -> tuple[str, Callable]:
         # Match pattern: anything before, then BETWEEN <expr1> AND <expr2>
         pattern = r"(.*?)\bBETWEEN\b\s+(.*?)\s+\bAND\b\s+(.*?)"

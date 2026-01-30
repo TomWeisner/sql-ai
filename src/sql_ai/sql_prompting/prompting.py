@@ -16,6 +16,7 @@ class SQLPrompt(ABC):
         general_guidelines: str,
     ) -> None:
         self.model: Optional[Model] = None
+        self.extra_context: str = ""
         self.general_context_template = general_context_template
         self.general_guidelines_text = general_guidelines
 
@@ -23,9 +24,9 @@ class SQLPrompt(ABC):
     def build_prompt_body_for_sql(self, user_question, tables: list[Table]) -> PromptBody:
         model = self._require_model()
         prompt = self.general_context(user_question, tables)
-        prompt += self.additional_context()
         prompt += self.general_guidelines()
         prompt += self.additional_guidelines()
+        prompt += self.additional_context()
         body = BedrockService.build_body(message=prompt, model=model)
         return body
 
@@ -34,7 +35,7 @@ class SQLPrompt(ABC):
         return self.general_context_template.format(user_question, table_schema_context)
 
     def additional_context(self) -> str:
-        return ""
+        return getattr(self, "extra_context", "")
 
     def general_guidelines(self) -> str:
         return self.general_guidelines_text
@@ -49,13 +50,18 @@ class SQLPrompt(ABC):
     ) -> PromptBody:
         model = self._require_model()
         prompt_data = BedrockService.data_to_prompt(data=data)
+        extra_context = self.extra_context or ""
         prompt = (
             "You are a helpful data analyst assistant.\n"
-            "Answer the user's question/command:\n\n"
+            "You are interpreting the results of a SQL query to answer the user's "
+            "latest question.\n"
+            "Use only the data provided and the conversation context (if supplied).\n\n"
+            f"{extra_context}\n"
+            "Most recent user question:\n"
             f'"{user_question}"\n\n'
-            "Use the below data in your answer:\n"
+            "SQL query results:\n"
             f"{prompt_data}\n\n"
-            "IF the answer contains numbers, round sensibly, include units, "
+            "If the answer contains numbers, round sensibly, include units, "
             "and show the numeric part in **bold**.\n"
             "Do not describe your steps; just answer."
         )

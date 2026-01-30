@@ -141,15 +141,12 @@ class AthenaBackend(SqlBackend):
                 continue
             lines_out.append(line.strip())
 
-        print(f"Extracted DDL lines:\n{lines_out}")
-
         cleaned = "\n".join(lines_out).strip()
         cleaned = (
             cleaned.replace("CREATE TABLE", "")
             .replace("CREATE EXTERNAL TABLE", "")
             .strip()
         )
-        print(f"Cleaned DDL for schema extraction:\n{cleaned}")
         return self._ddl_to_schema(cleaned)
 
     def _ddl_to_schema(self, ddl: str) -> dict[str, str]:

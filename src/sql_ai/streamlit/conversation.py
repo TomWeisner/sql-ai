@@ -52,7 +52,8 @@ def render_conversation(
         anchor_attrs = "data-question-anchor='true'"
         if is_last_run:
             anchor_attrs += " data-current-question='true'"
-        attrs = f"id='question-{idx}' {anchor_attrs}"
+        anchor_id = "current-question" if is_last_run else f"question-{idx}"
+        attrs = f"id='{anchor_id}' {anchor_attrs}"
         asked_at = run.get("asked_at")
         render_user_message(run.get("question", "(unknown)"), asked_at, attrs)
         if run.get("status") == "pending":

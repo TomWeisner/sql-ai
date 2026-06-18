@@ -74,10 +74,12 @@ class ChatbotApp:
         if auth_notice:
             st.sidebar.title("🔐 AWS login")
             st.sidebar.warning(auth_notice)
+            if st.sidebar.button("I've logged in — retry", key="aws_auth_notice_retry"):
+                st.session_state.pop("aws_auth_notice", None)
+                st.rerun()
             profile_name = self.llm.config.aws_profile.strip()
             if profile_name:
                 st.sidebar.code(f"aws sso login --profile {profile_name}")
-
     def _render_header(self) -> None:
         st.markdown("<div id='page-top'></div>", unsafe_allow_html=True)
         st.title(f"🚂 LNER LLMs - {self.title}")

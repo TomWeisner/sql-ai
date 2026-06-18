@@ -10,9 +10,7 @@ from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_GUIDELINES,
 )
 from sql_ai.sql_llm import SqlLLM
-from sql_ai.sql_prompting.prompting import (
-    SQLPrompt,
-)
+from sql_ai.sql_prompting.prompting import SQLPrompt
 
 # data downloaded here: https://erictleung.com/pixarfilms/
 

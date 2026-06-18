@@ -1,9 +1,10 @@
 # Declare targets that don't correspond to real files so Make always runs them.
-.PHONY: install format format-check lint local-lint isort isort-check type-check test coverage coverage-artifacts ci precommit
+.PHONY: install format format-check lint local-lint isort isort-check type-check test coverage coverage-artifacts ci precommit chatbot
 
 POETRY ?= poetry
 PYTHONPATH := src:tests
 SOURCE_DIRS := src tests
+STREAMLIT_APP ?= cem
 
 install:
 	@echo "Installing dependencies..."
@@ -48,3 +49,6 @@ ci:
 
 precommit:
 	$(POETRY) run pre-commit run --all-files
+
+chatbot:
+	SQL_AI_STREAMLIT_APP=$(STREAMLIT_APP) $(POETRY) run streamlit run src/sql_ai/streamlit/entrypoint.py

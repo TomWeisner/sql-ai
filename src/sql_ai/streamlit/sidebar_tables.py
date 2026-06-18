@@ -5,6 +5,7 @@ from __future__ import annotations
 import streamlit as st
 from sql_ai.sql_backend.table import Table
 from sql_ai.sql_llm import SqlLLM
+from sql_ai.streamlit.aws_auth import build_aws_login_message, is_aws_auth_error
 from sql_ai.streamlit.ui_templates import table_desc_html, table_meta_html
 
 
@@ -33,8 +34,14 @@ def render_tables_panel(
                     llm.backend.tables = all_tables
                     llm.backend.populate_schemas()
                     st.session_state.tables_loaded = True
+                    st.session_state.pop("aws_auth_notice", None)
                 except Exception as e:
-                    st.warning(f"Could not load table schemas: {e}")
+                    if is_aws_auth_error(e):
+                        auth_message = build_aws_login_message(llm.config.aws_profile, e)
+                        st.session_state["aws_auth_notice"] = auth_message
+                        st.warning(auth_message)
+                    else:
+                        st.warning(f"Could not load table schemas: {e}")
                 finally:
                     llm.backend.tables = original_tables
                     st.session_state["suppress_sidebar_typewriter"] = previous_typewriter

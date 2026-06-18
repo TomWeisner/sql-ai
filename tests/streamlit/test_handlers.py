@@ -1,6 +1,5 @@
 from unittest.mock import MagicMock
 
-import streamlit as st
 from sql_ai.streamlit.handlers import process_question
 from sql_ai.streamlit.query_controls import QueryControls
 
@@ -11,8 +10,10 @@ class DummyLLM:
 
 
 def test_process_question_blocks_when_auth_notice_present(monkeypatch):
-    st.session_state.clear()
-    st.session_state["aws_auth_notice"] = "AWS login needed"
+    fake_session_state = {"aws_auth_notice": "AWS login needed"}
+    monkeypatch.setattr(
+        "sql_ai.streamlit.handlers.st.session_state", fake_session_state, raising=False
+    )
     error_mock = MagicMock()
     monkeypatch.setattr("sql_ai.streamlit.handlers.st.error", error_mock)
 

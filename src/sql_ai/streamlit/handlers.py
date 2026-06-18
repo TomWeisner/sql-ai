@@ -270,16 +270,17 @@ def execute_saved_sql(
         st.session_state.query_runs[idx] = update_payload
     except Exception as exc:
         error_details = display_enhanced_traceback(exc)
+        is_auth_error = is_aws_auth_error(exc)
         error_message = (
             build_aws_login_message(llm.config.aws_profile, exc)
-            if is_aws_auth_error(exc)
+            if is_auth_error
             else (
                 error_details.get("message")
                 if isinstance(error_details, dict)
                 else "An error occurred."
             )
         )
-        if is_aws_auth_error(exc):
+        if is_auth_error:
             st.session_state["aws_auth_notice"] = error_message
         st.session_state.query_runs[idx] = {
             **run,
@@ -330,16 +331,17 @@ def interpret_saved_result(llm: SqlLLM, idx: int, run: dict) -> None:
         }
     except Exception as exc:
         error_details = display_enhanced_traceback(exc)
+        is_auth_error = is_aws_auth_error(exc)
         error_message = (
             build_aws_login_message(llm.config.aws_profile, exc)
-            if is_aws_auth_error(exc)
+            if is_auth_error
             else (
                 error_details.get("message")
                 if isinstance(error_details, dict)
                 else "An error occurred."
             )
         )
-        if is_aws_auth_error(exc):
+        if is_auth_error:
             st.session_state["aws_auth_notice"] = error_message
         st.session_state.query_runs[idx] = {
             **run,

@@ -80,6 +80,7 @@ class ChatbotApp:
             profile_name = self.llm.config.aws_profile.strip()
             if profile_name:
                 st.sidebar.code(f"aws sso login --profile {profile_name}")
+
     def _render_header(self) -> None:
         st.markdown("<div id='page-top'></div>", unsafe_allow_html=True)
         st.title(f"🚂 LNER LLMs - {self.title}")

@@ -200,7 +200,7 @@ def inject_app_styles(chat_width: int = 640):
         }}
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] > label > div {{
             justify-content: center;
-        }}h
+        }}
         div[data-testid="stHorizontalBlock"] [data-testid="stCheckbox"] span {{
             text-align: center;
         }}
@@ -255,20 +255,36 @@ def inject_app_styles(chat_width: int = 640):
             width: 100%;
         }}
         div[data-testid="stChatInput"] {{
+            width: min(100%, var(--chat-width));
             max-width: var(--chat-width);
             margin-left: auto;
             margin-right: auto;
         }}
         div[data-testid="stChatInput"] > div {{
-            max-width: var(--chat-width);
+            width: 100%;
             margin-left: auto;
             margin-right: auto;
         }}
+        div[data-testid="stChatInput"] [data-testid="stChatInputTextArea"] {{
+            width: 100%;
+            flex: 1 1 auto;
+            border-radius: 18px;
+            overflow: hidden;
+        }}
         div[data-testid="stChatInput"] textarea {{
-            min-height: 48px;
+            width: 100%;
+            min-height: 40px;
             height: auto;
+            font-size: 1rem;
+            padding-top: 0.45rem;
+            padding-bottom: 0.45rem;
+            line-height: 1.35;
+            border-radius: 18px;
             overflow-y: hidden !important;
-            resize: vertical;
+            resize: none;
+        }}
+        div[data-testid="stChatInput"] textarea::-webkit-resizer {{
+            display: none;
         }}
         [data-testid="stTextInput"] div[data-baseweb="base-input"] {{
             background: transparent;

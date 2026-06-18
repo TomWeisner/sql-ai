@@ -9,6 +9,7 @@ import pandas as pd
 
 import streamlit as st
 from sql_ai.sql_llm import SqlLLM
+from sql_ai.streamlit.aws_auth import build_aws_login_message, is_aws_auth_error
 from sql_ai.streamlit.context_prompt import build_previous_conversation_context
 from sql_ai.streamlit.query_controls import QueryControls
 from sql_ai.streamlit.sql_utils import normalize_sql
@@ -75,6 +76,10 @@ def process_question(
     question: str,
     controls: QueryControls,
 ) -> bool:
+    auth_notice = st.session_state.get("aws_auth_notice")
+    if auth_notice:
+        st.error(auth_notice)
+        return False
     if not llm.tables:
         st.error("Please select at least one table to query.")
         return False
@@ -183,6 +188,18 @@ def handle_question_actual(
     except Exception as exc:
         error_details = display_enhanced_traceback(exc)
         duration_s = (datetime.now() - start_time).total_seconds()
+        is_auth_error = is_aws_auth_error(exc)
+        error_message = (
+            build_aws_login_message(llm.config.aws_profile, exc)
+            if is_auth_error
+            else (
+                error_details.get("message")
+                if isinstance(error_details, dict)
+                else "An error occurred."
+            )
+        )
+        if is_auth_error:
+            st.session_state["aws_auth_notice"] = error_message
         return {
             "question": question,
             "sql_query": st.session_state.get("sql_query"),
@@ -193,11 +210,7 @@ def handle_question_actual(
             "answer": None,
             "dry_run": dry_run,
             "duration_s": duration_s,
-            "error_message": (
-                error_details.get("message")
-                if isinstance(error_details, dict)
-                else "An error occurred."
-            ),
+            "error_message": error_message,
             "exception_traceback": (
                 error_details.get("traceback")
                 if isinstance(error_details, dict)
@@ -257,14 +270,22 @@ def execute_saved_sql(
         st.session_state.query_runs[idx] = update_payload
     except Exception as exc:
         error_details = display_enhanced_traceback(exc)
-        st.session_state.query_runs[idx] = {
-            **run,
-            "status": "error",
-            "error_message": (
+        is_auth_error = is_aws_auth_error(exc)
+        error_message = (
+            build_aws_login_message(llm.config.aws_profile, exc)
+            if is_auth_error
+            else (
                 error_details.get("message")
                 if isinstance(error_details, dict)
                 else "An error occurred."
-            ),
+            )
+        )
+        if is_auth_error:
+            st.session_state["aws_auth_notice"] = error_message
+        st.session_state.query_runs[idx] = {
+            **run,
+            "status": "error",
+            "error_message": error_message,
             "exception_traceback": (
                 error_details.get("traceback")
                 if isinstance(error_details, dict)
@@ -310,14 +331,22 @@ def interpret_saved_result(llm: SqlLLM, idx: int, run: dict) -> None:
         }
     except Exception as exc:
         error_details = display_enhanced_traceback(exc)
-        st.session_state.query_runs[idx] = {
-            **run,
-            "status": "error",
-            "error_message": (
+        is_auth_error = is_aws_auth_error(exc)
+        error_message = (
+            build_aws_login_message(llm.config.aws_profile, exc)
+            if is_auth_error
+            else (
                 error_details.get("message")
                 if isinstance(error_details, dict)
                 else "An error occurred."
-            ),
+            )
+        )
+        if is_auth_error:
+            st.session_state["aws_auth_notice"] = error_message
+        st.session_state.query_runs[idx] = {
+            **run,
+            "status": "error",
+            "error_message": error_message,
             "exception_traceback": (
                 error_details.get("traceback")
                 if isinstance(error_details, dict)

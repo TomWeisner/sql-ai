@@ -52,8 +52,8 @@ class ChatbotApp:
 
     def run(self):
         self._setup_layout()
-        self._render_sidebar()
         self._render_header()
+        self._render_sidebar()
         controls = render_query_controls()
         self._render_main(controls)
 
@@ -61,12 +61,25 @@ class ChatbotApp:
         st.session_state.setdefault("suppress_sidebar_typewriter", True)
         set_sidebar_width_and_center_content(sidebar_width=450, max_content_width=1100)
         set_title_top_padding(rem=0.5)
-        inject_app_styles(chat_width=640)
+        inject_app_styles(chat_width=768)
 
     def _render_sidebar(self) -> None:
+        self._render_aws_auth_notice()
         self.all_tables = render_sidebar(
             self.llm, self.all_tables, format_table_description
         )
+
+    def _render_aws_auth_notice(self) -> None:
+        auth_notice = st.session_state.get("aws_auth_notice")
+        if auth_notice:
+            st.sidebar.title("🔐 AWS login")
+            st.sidebar.warning(auth_notice)
+            if st.sidebar.button("I've logged in — retry", key="aws_auth_notice_retry"):
+                st.session_state.pop("aws_auth_notice", None)
+                st.rerun()
+            profile_name = self.llm.config.aws_profile.strip()
+            if profile_name:
+                st.sidebar.code(f"aws sso login --profile {profile_name}")
 
     def _render_header(self) -> None:
         st.markdown("<div id='page-top'></div>", unsafe_allow_html=True)
@@ -79,6 +92,9 @@ class ChatbotApp:
         return process_question(self.llm, question, controls)
 
     def _render_main(self, controls: QueryControls) -> None:
+        auth_notice = st.session_state.get("aws_auth_notice")
+        if auth_notice:
+            st.warning(auth_notice)
         render_conversation(
             llm=self.llm,
             handle_question_actual=lambda q, s, d, i: handle_question_actual(

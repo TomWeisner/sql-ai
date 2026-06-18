@@ -37,7 +37,8 @@ All sessions can be run together with `nox`
 It is recommended to run `nox` successfully before pushing.
 
 ## For analysts (using the app)
-- Launch the UI: `streamlit run src/sql_ai/streamlit/entrypoint.py` from the repo root.
+- Launch the UI: `make chatbot` from the repo root.
+- Switch datasets: `make chatbot STREAMLIT_APP=pixar` to launch the Pixar demo instead of the default CEM app.
 - Ask questions: type a natural-language question in the Streamlit input; the app generates SQL, executes it, and shows an answer.
 - Inspect the result: expand the tabs to see the SQL, formatting changes, data, and prompts that drove the answer.
 - Export: use the download button in the “Data” tab to export the result set as CSV.
@@ -60,9 +61,13 @@ It is recommended to run `nox` successfully before pushing.
 
 ## How to run the chatbot
 
-Enter venv, then:
+From the repo root:
 
-`streamlit run src/sql_ai/streamlit/entrypoint.py`
+`make chatbot`
+
+To run the Pixar example instead of the default CEM app:
+
+`make chatbot STREAMLIT_APP=pixar`
 
 
 ## Architecture overview

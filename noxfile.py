@@ -1,7 +1,15 @@
 import nox
 
 
-nox.options.sessions = ["format_check", "lint", "isort_check", "type_check", "tests"]
+nox.options.sessions = [
+    "isort",
+    "format",
+    "format_check",
+    "lint",
+    "isort_check",
+    "type_check",
+    "tests",
+]
 
 
 def _run_make(session: nox.Session, target: str) -> None:

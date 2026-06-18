@@ -34,14 +34,12 @@ jobs:
           virtualenvs-create: true
           virtualenvs-in-project: true
           installer-parallel: true
-      - name: Install poetry export plugin
-        run: poetry self add poetry-plugin-export
       #----------------------------------------------
       #       load cached venv if cache exists
       #----------------------------------------------
       - name: Load cached venv
         id: cached-poetry-dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
@@ -50,31 +48,16 @@ jobs:
       #----------------------------------------------
       - name: Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: make install
       #----------------------------------------------
-      #              run nox
+      #              run CI checks
       #----------------------------------------------
-      - name: Run nox
-        run: |
-          source .venv/bin/activate
-          nox
-      
-      #----------------------------------------------
-      #              run code coverage
-      #----------------------------------------------
-      # Sanity check: ensure pytest-cov is importable before running tests
-      - name: Sanity check pytest-cov installed
-        run: poetry run python -c "import pytest_cov; print('pytest-cov OK')"
-
-      # Run tests and generate coverage.xml for Codecov
-      - name: Run tests & create coverage.xml
-        run: poetry run pytest --cov=sql_ai --cov-report=xml --cov-report=term-missing
+      - name: Run CI checks
+        run: make ci
 
       # Show where coverage artifacts landed (useful when debugging CI)
       - name: Show coverage artifacts
-        run: |
-          ls -al
-          find . -maxdepth 3 -name "coverage.xml" -o -name ".coverage*"
+        run: make coverage-artifacts
 
       # Upload the coverage.xml to Codecov
       - name: Upload coverage to Codecov

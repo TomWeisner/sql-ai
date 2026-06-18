@@ -5,7 +5,7 @@ description = "Repo for converting natural language to SQL via a front end chatb
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Tom Weisner", email = "tomweisner@hotmail.com" }]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 dependencies = [
   "streamlit>=1.45.1",
@@ -47,6 +47,7 @@ pytest = "^8.0"
 [tool.poetry.group.typing.dependencies]
 black = "^24.4.1"
 flake8 = "^7.0.0"
+isort = "^5.13.2"
 mypy = ">=1.10.0"
 pandas-stubs = "^2.2.2"
 types-pyyaml = "^6.0.12"
@@ -71,7 +72,7 @@ src_paths = ["src", "tests"]
 
 [tool.black]
 line-length = 90
-target-version = ["py310"]
+target-version = ["py311"]
 include = "\\.pyi?$"
 
 [tool.pytest.ini_options]

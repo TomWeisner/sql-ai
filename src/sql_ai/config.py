@@ -7,10 +7,11 @@ from sql_ai.utils.utils import find_aws_profile_by_account_id
 
 # Keep this in sync with MODEL_REGISTRY keys
 ModelKey = Literal[
-    "claude-sonnet-3",
+    "claude-sonnet-3.0",
     "claude-sonnet-3.7",
     "claude-sonnet-4.5",
     "claude-opus-4.5",
+    "claude-sonnet-4.6",
 ]
 
 
@@ -28,7 +29,7 @@ class Config:
     aws_redshift_db_user: str = ""
     aws_redshift_secret_arn: str = ""
 
-    bedrock_model_key: ModelKey = "claude-sonnet-4.5"  # callers pass a key
+    bedrock_model_key: ModelKey = "claude-sonnet-4.6"  # callers pass a key
     bedrock_inference_profile_id: str = ""  # ID or ARN for inference profiles
     bedrock_model: Model = field(init=False)  # derived, not user-set
 

@@ -46,11 +46,23 @@ def button_class_script_html() -> str:
     return """
     <script>
     (function() {
-      const root = window.parent.document;
+    const root = window.parent.document;
+    const parentWindow = window.parent;
 
-      const wire = () => {
-        const buttons = root.querySelectorAll('button');
-        buttons.forEach((btn) => {
+    const scrollToElement = (target) => {
+      if (!target) return;
+      const rect = target.getBoundingClientRect();
+      const absoluteTop = rect.top + parentWindow.pageYOffset;
+      parentWindow.scrollTo({ top: absoluteTop, behavior: 'smooth' });
+    };
+
+    const scrollToTop = () => {
+      parentWindow.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const wire = () => {
+      const buttons = root.querySelectorAll('button');
+      buttons.forEach((btn) => {
           const text = (btn.innerText || '').trim().toLowerCase();
           if (text === '🗑️') {
             btn.classList.add('btn-clear');
@@ -85,12 +97,18 @@ def button_class_script_html() -> str:
               let target = null;
               if (targetKind === 'page-top') {
                 target = root.getElementById('page-top');
+                if (target) {
+                  scrollToElement(target);
+                } else {
+                  scrollToTop();
+                }
+                return;
               } else {
                 target = root.querySelector('[data-current-question="true"]')
                   || root.querySelector('[data-question-anchor="true"]');
               }
               if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                scrollToElement(target);
               }
             });
           }

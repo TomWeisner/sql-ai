@@ -1,37 +1,48 @@
-import nox_poetry
+import nox
 
 
-# Formatting
-@nox_poetry.session(tags=["style", "fix"])
-def format(session: nox_poetry.Session) -> None:
-    session.install("black")
-    session.run("black", "src", "tests")
+nox.options.sessions = ["format_check", "lint", "isort_check", "type_check", "tests"]
 
 
-# Linting
-@nox_poetry.session(tags=["style"])
-def lint(session: nox_poetry.Session) -> None:
-    session.install("flake8", "flake8-black")
-    session.run("flake8", "--max-line-length=90", "src", "tests")
+def _run_make(session: nox.Session, target: str) -> None:
+    session.run("make", target, external=True)
 
 
-# Isort
-@nox_poetry.session(tags=["style", "fix"])
-def isort(session: nox_poetry.Session) -> None:
-    session.install("isort")
-    session.run("isort", "src", "tests")
+@nox.session(venv_backend="none", tags=["style", "fix"])
+def format(session: nox.Session) -> None:
+    _run_make(session, "format")
 
 
-# Type checking
-@nox_poetry.session(tags=["style", "fix"])
-def type_check(session: nox_poetry.Session) -> None:
-    session.install(".")
-    session.run("mypy", "--explicit-package-bases", "src", "tests", external=True)
+@nox.session(name="format_check", venv_backend="none", tags=["style"])
+def format_check(session: nox.Session) -> None:
+    _run_make(session, "format-check")
 
 
-# Tests
-@nox_poetry.session(tags=["test"])
-def tests(session: nox_poetry.Session) -> None:
-    session.install("pytest")
-    session.install(".")
-    session.run("pytest", "tests", env={"PYTHONPATH": "src:tests"})
+@nox.session(venv_backend="none", tags=["style"])
+def lint(session: nox.Session) -> None:
+    _run_make(session, "lint")
+
+
+@nox.session(venv_backend="none", tags=["style", "fix"])
+def isort(session: nox.Session) -> None:
+    _run_make(session, "isort")
+
+
+@nox.session(name="isort_check", venv_backend="none", tags=["style"])
+def isort_check(session: nox.Session) -> None:
+    _run_make(session, "isort-check")
+
+
+@nox.session(venv_backend="none", tags=["style"])
+def type_check(session: nox.Session) -> None:
+    _run_make(session, "type-check")
+
+
+@nox.session(venv_backend="none", tags=["test"])
+def tests(session: nox.Session) -> None:
+    _run_make(session, "test")
+
+
+@nox.session(venv_backend="none", tags=["test"])
+def coverage(session: nox.Session) -> None:
+    _run_make(session, "coverage")

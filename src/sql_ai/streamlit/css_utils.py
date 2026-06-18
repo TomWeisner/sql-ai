@@ -321,6 +321,11 @@ def inject_app_styles(chat_width: int = 640):
             gap: 6px;
             white-space: nowrap;
         }}
+        a.footer-scroll-link {{
+            text-decoration: none;
+            color: #111827;
+            font-size: 0.76rem;
+        }}
         button.btn-clear:hover {{
             background: #fee2e2;
             color: #991b1b;
@@ -388,11 +393,20 @@ def inject_app_styles(chat_width: int = 640):
         }}
         .question-anchor {{
             height: 0;
-            scroll-margin-top: 16px;
+            scroll-margin-top: 80px;
             margin: 0;
             padding: 0;
             line-height: 0;
             display: block;
+        }}
+        #page-top {{
+            scroll-margin-top: 80px;
+            height: 0;
+            display: block;
+        }}
+        .user-row-wrap[data-current-question="true"],
+        .user-row-wrap[data-question-anchor="true"] {{
+            scroll-margin-top: 80px;
         }}
         div[data-testid="stVerticalBlock"] > div:has(.question-anchor) {{
             margin: 0 !important;

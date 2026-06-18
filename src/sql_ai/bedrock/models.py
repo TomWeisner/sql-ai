@@ -46,9 +46,16 @@ claude_opus_45_model = Model(
     top_p=None,
 )
 
+claude_sonnet_46_model = Model(
+    name="Claude Sonnet 4.6",
+    id="global.anthropic.claude-sonnet-4-6",
+    top_p=None,
+)
+
 MODEL_REGISTRY = {
     "claude-sonnet-3.0": claude_sonnet_30_model,
     "claude-sonnet-3.7": claude_sonnet_37_model,
     "claude-sonnet-4.5": claude_sonnet_45_model,
     "claude-opus-4.5": claude_opus_45_model,
+    "claude-sonnet-4.6": claude_sonnet_46_model,
 }

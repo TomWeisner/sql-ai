@@ -98,20 +98,18 @@ def render_footer_controls(
         with col_question:
             st.markdown(
                 """
-                <button class="btn-scroll footer-scroll-btn" type="button"
-                  data-scroll-target="current-question">
+                <a class="btn-scroll footer-scroll-link" href="#current-question">
                   ⬆️&nbsp;Question
-                </button>
+                </a>
                 """,
                 unsafe_allow_html=True,
             )
         with col_top:
             st.markdown(
                 """
-                <button class="btn-scroll footer-scroll-btn" type="button"
-                  data-scroll-target="page-top">
+                <a class="btn-scroll footer-scroll-link" href="#page-top">
                   ⏫&nbsp;Top
-                </button>
+                </a>
                 """,
                 unsafe_allow_html=True,
             )

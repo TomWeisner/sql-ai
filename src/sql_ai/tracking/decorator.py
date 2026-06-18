@@ -4,14 +4,8 @@ from typing import Callable, Optional, Union
 
 from sql_ai.streamlit.safe import st_if_ctx
 from sql_ai.streamlit.utils import render_sidebar_steps, sidebar_typewriter
-from sql_ai.tracking.step import (
-    Step,
-    log_step_starting,
-    log_unlogged_steps,
-)
-from sql_ai.tracking.tracker import (
-    step_tracker,
-)
+from sql_ai.tracking.step import Step, log_step_starting, log_unlogged_steps
+from sql_ai.tracking.tracker import step_tracker
 
 
 def resolve_step_name(

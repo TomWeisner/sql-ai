@@ -1,25 +1,29 @@
+"""Streamlit utility helpers for prompts, steps, and tracebacks."""
+
 import json
 import re
 import sys
 import time
 import traceback
-from contextlib import contextmanager
-from functools import wraps
-from typing import Callable, Union
 
-import streamlit as st
+try:
+    import streamlit as st  # type: ignore
+except ModuleNotFoundError:  # Streamlit is optional for non-UI contexts.
+    st = None  # type: ignore
 
-from sql_ai.athena.tracking.decorator import (
-    resolve_step_name,
-)
-from sql_ai.athena.tracking.step import (
-    Step,
-    log_step_starting,
-    log_unlogged_steps,
-)
-from sql_ai.athena.tracking.tracker import (
-    step_tracker,
-)
+_SIDEBAR_STEPS_PLACEHOLDER = None
+
+
+def set_sidebar_steps_placeholder(placeholder):
+    global _SIDEBAR_STEPS_PLACEHOLDER
+    _SIDEBAR_STEPS_PLACEHOLDER = placeholder
+
+
+def render_sidebar_steps(steps: list[str]) -> bool:
+    if st is None or _SIDEBAR_STEPS_PLACEHOLDER is None:
+        return False
+    _SIDEBAR_STEPS_PLACEHOLDER.markdown("\n\n".join(steps))
+    return True
 
 
 def neat_prompt(prompt: dict) -> str:
@@ -34,11 +38,27 @@ def neat_prompt(prompt: dict) -> str:
 
 
 def sidebar_typewriter(text: str, speed: float = 0.005):
-    container = st.sidebar.empty()
+    if st is None:
+        print(text)
+        return
+    if _SIDEBAR_STEPS_PLACEHOLDER is None:
+        container = st.sidebar.empty()
+        typed = ""
+        for char in text:
+            typed += char
+            container.markdown(f"{typed}")
+            time.sleep(speed)
+        return
+
+    steps = st.session_state.get("steps_taken", [])
+    prefix = "\n\n".join(steps[:-1])
     typed = ""
     for char in text:
         typed += char
-        container.markdown(f"{typed}")
+        if prefix:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(f"{prefix}\n\n{typed}")
+        else:
+            _SIDEBAR_STEPS_PLACEHOLDER.markdown(typed)
         time.sleep(speed)
 
 
@@ -48,6 +68,9 @@ def print_message(
     role: str = "system",
     should_remember: bool = False,
 ) -> float:
+    if st is None:
+        print(f"[{role}] {message}")
+        return time.time()
     assert role in ["system", "user", "assistant"]
     time_now = time.time()
     msg = {"role": role, "content": message}
@@ -62,7 +85,7 @@ def print_message(
 
 def display_enhanced_traceback(
     e: Exception,
-    user_message: str = "An error occurred.",
+    user_message: str | None = None,
     project_identifier: str = "sql_ai.",
 ):
     # 1. Get traceback and format it
@@ -96,15 +119,25 @@ def display_enhanced_traceback(
             )
 
     # 3. Highlight root exception message (last line of the trace)
-    # Extract clean root exception (last line)
     tbe = traceback.TracebackException.from_exception(e)
-    exception_only = "".join(
-        tbe.format_exception_only()
-    ).strip()  # e.g. "TypeError: something bad"
-    highlighted_trace = highlighted_trace.replace(
-        exception_only, f"<b>{exception_only}</b>"
-    )
+    exception_only = "".join(tbe.format_exception_only()).strip()
+    if exception_only:
+        highlighted_trace = highlighted_trace.replace(
+            exception_only, f"<b>{exception_only}</b>"
+        )
+
     # 4. Show user-facing error and expandable details
+    if user_message is None:
+        user_message = exception_only or "An error occurred."
+
+    if st is None:
+        traceback.print_exc()
+        return {
+            "message": user_message,
+            "traceback": highlighted_trace,
+            "exception_only": exception_only,
+        }
+
     st.error(user_message)
 
     with st.expander("Show full error details"):
@@ -113,66 +146,8 @@ def display_enhanced_traceback(
             unsafe_allow_html=True,
         )
 
-
-@contextmanager
-def track_step_and_log_cm(start_message: Union[str, Callable], end_message: str = ""):
-    resolved_name = resolve_step_name(start_message)
-    step = Step(start_msg="▶️  " + resolved_name)
-    step_tracker.push(step)
-    speed = 0.001
-    if step.level == 1:
-        speed = 0
-    sidebar_typewriter(text=log_step_starting(step), speed=speed)
-    success = True
-    try:
-        yield
-    except Exception:
-        success = False
-        raise
-    finally:
-        step.timer.stop_timer()
-        step_tracker.pop()
-        emoji = "✅" if success else "❌"
-        if not end_message:
-            end_message = f"{emoji} " + resolved_name
-        step.end_msg = end_message
-        log_lines = log_unlogged_steps(step)
-        for line in log_lines:
-            sidebar_typewriter(text=line, speed=0.001)
-
-
-def track_step_and_log(start_message: Union[str, Callable], end_message: str = ""):
-    def decorator(fn):
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            resolved_name = resolve_step_name(start_message, args=args, kwargs=kwargs)
-            step = Step(start_msg="▶️  " + resolved_name)
-            step_tracker.push(step)
-            speed = 0.001
-            if step.level == 1:
-                speed = 0
-            sidebar_typewriter(text=log_step_starting(step), speed=speed)
-            success = True
-            try:
-                result = fn(*args, **kwargs)
-                # Detect success flag in last return item (optional pattern)
-                if isinstance(result, tuple) and isinstance(result[-1], bool):
-                    *output_values, success = result
-            except Exception:
-                success = False
-                raise
-
-            finally:
-                step.timer.stop_timer()
-                step_tracker.pop()
-                emoji = "✅" if success else "❌"
-                final_msg = end_message or f"{emoji} {resolved_name}"
-                step.end_msg = final_msg
-                log_lines = log_unlogged_steps(step)
-                for line in log_lines:
-                    sidebar_typewriter(text=line, speed=0.001)
-            return result
-
-        return wrapper
-
-    return decorator
+    return {
+        "message": user_message,
+        "traceback": highlighted_trace,
+        "exception_only": exception_only,
+    }

@@ -1,11 +1,11 @@
 [project]
 name = "sql-ai"
 version = "0.0.1"
-description = "Repo for converting natural language to SQL via a front end chatbot"
+description = "Repo for converting natural language to SQL via a Streamlit front end chatbot"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "Tom Weisner", email = "tomweisner@hotmail.com" }]
-requires-python = ">=3.10"
+authors = [{ name = "Tom Weisner", email = "thomas.weisner@hotmail.com" }]
+requires-python = ">=3.11"
 
 dependencies = [
   "streamlit>=1.45.1",
@@ -14,7 +14,11 @@ dependencies = [
   "pyyaml>=6.0.2",
   "sqlglot>=26.31.0",
   "python-docx>=1.2.0",
-  "boto3-stubs[athena]>=1.39.3"
+  "boto3-stubs[athena]>=1.39.3",
+  "mypy-boto3-athena (>=1.40.0,<2.0.0)",
+  "pytest-mock (>=3.14.1,<4.0.0)",
+  "moto (>=5.1.9,<6.0.0)",
+  "pytest-cov (>=7.0.0,<8.0.0)"
 ]
 
 [build-system]
@@ -25,6 +29,7 @@ build-backend = "poetry.core.masonry.api"
 packages = [
   { include = "sql_ai", from = "src" }
 ]
+scripts = { "sql-ai" = "sql_ai.streamlit.entrypoint:main" }
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.2.0"
@@ -32,16 +37,17 @@ streamlit = "^1.46.1"
 types-pyyaml = "^6.0.12.20250516"
 nox = "^2025.5.1"
 nox-poetry = "^1.0"
+flake8-black = "^0.3.6"
 
 [tool.poetry.group.test.dependencies]
 nox-poetry = "^1.0"
 pytest = "^8.0"
-pytest-cov = "^4.0"
 
 
 [tool.poetry.group.typing.dependencies]
 black = "^24.4.1"
 flake8 = "^7.0.0"
+isort = "^5.13.2"
 mypy = ">=1.10.0"
 pandas-stubs = "^2.2.2"
 types-pyyaml = "^6.0.12"
@@ -65,8 +71,8 @@ profile = "black"
 src_paths = ["src", "tests"]
 
 [tool.black]
-line-length = 80
-target-version = ["py310"]
+line-length = 90
+target-version = ["py311"]
 include = "\\.pyi?$"
 
 [tool.pytest.ini_options]

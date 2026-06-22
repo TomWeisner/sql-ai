@@ -1,19 +1,20 @@
+# flake8: noqa
 # tests/conftest.py
 import os
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
-import pytest
-
-from sql_ai.athena.table import Table
-
-# Add `src/` and `tests/` to sys.path if not already present
 BASE_DIR = Path(__file__).resolve().parent.parent
 for subdir in ["src", "tests"]:
     path = str(BASE_DIR / subdir)
     if path not in sys.path:
         sys.path.insert(0, path)
+
+import pandas as pd
+import pytest
+
+from sql_ai.sql_backends import SqlBackend, Table
 
 
 def pytest_runtest_setup(item):
@@ -30,6 +31,30 @@ def _header(columns):
 def _data_row(n_cols, value="data"):
     """Return a single Athena row of identical values."""
     return {"Data": [{"VarCharValue": value} for _ in range(n_cols)]}
+
+
+# Dummy backend used in multiple tests
+class DummyBackend(SqlBackend):
+    def __init__(self):
+        self.tables: list[Table] = []
+        self.run_called_with = None
+        self.name = "Dummy"
+        self.sql_formatter = MagicMock()
+        self.prompt_context_template = ""
+        self.prompt_guidelines = ""
+
+    def populate_schemas(self):
+        return self.tables
+
+    def describe_metadata_tables(self, sql, tables):
+        return tables
+
+    def format_query(self, sql):
+        return MagicMock(formatted_sql=sql, logs=[], error_trace="")
+
+    def run_query(self, query: str):
+        self.run_called_with = query
+        return pd.DataFrame({"_col0": [1]})
 
 
 # ---------- fixture -------------------------------------------------
@@ -71,6 +96,11 @@ def mock_athena_client():
     client.get_query_results.return_value["NextToken"] = None
 
     return client
+
+
+@pytest.fixture
+def dummy_backend() -> DummyBackend:
+    return DummyBackend()
 
 
 @pytest.fixture

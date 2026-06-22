@@ -1,12 +1,23 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 25.1.0  # match the Poetry version
+  - repo: local
     hooks:
-      - id: black
-        args: ["--line-length=90"]
+      - id: format-check
+        name: Check maintained Python formatting scope
+        language: system
+        entry: make format-check
+        pass_filenames: false
+        stages: [pre-commit]
 
-  - repo: https://github.com/pycqa/flake8
-    rev: 7.3.0
-    hooks:
-      - id: flake8
-        args: ["--max-line-length=90"]
+      - id: isort-check
+        name: Check maintained Python import ordering scope
+        language: system
+        entry: make isort-check
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: lint
+        name: Lint maintained Python scope
+        language: system
+        entry: make lint
+        pass_filenames: false
+        stages: [pre-commit]

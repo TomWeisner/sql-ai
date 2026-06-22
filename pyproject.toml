@@ -1,10 +1,10 @@
 [project]
 name = "sql-ai"
 version = "0.0.1"
-description = "Repo for converting natural language to SQL via a front end chatbot"
+description = "Repo for converting natural language to SQL via a Streamlit front end chatbot"
 readme = "README.md"
 license = { file = "LICENSE" }
-authors = [{ name = "Tom Weisner", email = "tomweisner@hotmail.com" }]
+authors = [{ name = "Tom Weisner", email = "thomas.weisner@hotmail.com" }]
 requires-python = ">=3.11"
 
 dependencies = [

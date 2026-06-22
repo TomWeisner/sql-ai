@@ -3,12 +3,12 @@
 from typing import cast
 
 from sql_ai.config import Config
-from sql_ai.sql_backend.table import Table
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_CONTEXT_TEMPLATE,
     ATHENA_GUIDELINES,
 )
+from sql_ai.sql_backends.table import Table
 from sql_ai.sql_llm import SqlLLM
 from sql_ai.sql_prompting.prompting import SQLPrompt
 

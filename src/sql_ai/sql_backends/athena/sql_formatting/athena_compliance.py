@@ -2,7 +2,6 @@ import difflib
 import re
 from typing import Callable
 
-from sql_ai.sql_backend.table import Table
 from sql_ai.sql_backends.athena.allowed_objects.datatypes import (
     athena_allowed_datatypes,
     common_datatype_conversions,
@@ -12,6 +11,7 @@ from sql_ai.sql_backends.athena.allowed_objects.functions import (
     athena_datetime_literals,
     common_function_conversions,
 )
+from sql_ai.sql_backends.table import Table
 from sql_ai.sql_formatting.formatter_base import SQLFormatter
 
 

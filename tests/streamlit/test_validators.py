@@ -1,4 +1,4 @@
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.table import Table
 from sql_ai.streamlit.validators import get_storage_platform_error
 
 

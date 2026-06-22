@@ -7,8 +7,6 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
-from sql_ai.sql_backend.base import SqlBackend
-from sql_ai.sql_backend.table import Table
 from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_CONTEXT_TEMPLATE,
     ATHENA_GUIDELINES,
@@ -19,6 +17,8 @@ from sql_ai.sql_backends.athena.sql_formatting.athena_compliance import (
 from sql_ai.sql_backends.athena.sql_formatting.athena_style_standards import (
     SQLAthenaStandards,
 )
+from sql_ai.sql_backends.base import SqlBackend
+from sql_ai.sql_backends.table import Table
 from sql_ai.sql_formatting.formatting import SQLFormatting, SQLFormattingOutput
 from sql_ai.tracking.decorator import track_step_and_log
 

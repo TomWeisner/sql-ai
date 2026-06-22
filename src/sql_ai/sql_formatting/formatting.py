@@ -2,7 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import Protocol, Sequence, Tuple
 
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.table import Table
 from sql_ai.sql_formatting.formatter_base import SQLFormatter
 from sql_ai.tracking.decorator import track_step_and_log
 

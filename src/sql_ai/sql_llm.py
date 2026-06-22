@@ -9,8 +9,7 @@ from botocore.client import BaseClient
 
 from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
 from sql_ai.config import Config
-from sql_ai.sql_backend.base import SqlBackend
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends import SqlBackend, Table
 from sql_ai.sql_prompting.prompting import SQLPrompt
 from sql_ai.tracking.decorator import track_step_and_log
 

@@ -20,8 +20,7 @@ from pathlib import Path
 from typing import Sequence
 
 from sql_ai.config import Config
-from sql_ai.sql_backend.base import SqlBackend
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends import SqlBackend, Table
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.redshift.redshift_backend import RedshiftBackend
 from sql_ai.sql_llm import SqlLLM

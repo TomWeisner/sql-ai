@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from sql_ai.sql_backend.table import Table
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
+from sql_ai.sql_backends.table import Table
 
 
 @pytest.fixture

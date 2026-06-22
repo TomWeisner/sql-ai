@@ -1,5 +1,8 @@
-### SQL Backend
+### SQL Backend compatibility layer
 
-Backends encapsulate how we talk to a particular SQL engine (schema discovery, formatting,
-query execution, prompt defaults).  
-`base.py` defines the protocol; `table.py` holds the shared metadata object used across the app.  
+The shared backend primitives now live in `sql_ai.sql_backends` alongside the
+engine-specific implementations.
+
+This directory remains in place only as a lightweight compatibility layer so
+older imports such as `sql_ai.sql_backend.table` and `sql_ai.sql_backend.base`
+continue to work.

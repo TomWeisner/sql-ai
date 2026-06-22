@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.table import Table
 
 
 def get_storage_platform_error(tables: Iterable[Table]) -> str | None:

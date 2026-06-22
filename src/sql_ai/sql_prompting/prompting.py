@@ -5,7 +5,7 @@ import pandas as pd
 
 from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
 from sql_ai.bedrock.models import Model
-from sql_ai.sql_backend.table import Table
+from sql_ai.sql_backends.table import Table
 from sql_ai.tracking.decorator import track_step_and_log
 
 

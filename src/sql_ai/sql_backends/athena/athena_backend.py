@@ -52,6 +52,10 @@ class AthenaBackend(SqlBackend):
             database=database,
             catalog=catalog,
         )
+        if not config.output_bucket:
+            raise ValueError(
+                "AthenaConfig.output_bucket must be set to an S3 bucket for Athena query results."
+            )
         aws_config = aws_config or AwsConfig(
             profile=aws_profile,
             region=aws_region,

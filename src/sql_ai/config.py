@@ -1,9 +1,7 @@
-import os
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from sql_ai.bedrock.models import MODEL_REGISTRY, Model
-from sql_ai.utils.utils import find_aws_profile_by_account_id
 
 # Keep this in sync with MODEL_REGISTRY keys
 ModelKey = Literal[
@@ -15,52 +13,59 @@ ModelKey = Literal[
 ]
 
 
+def _resolve_bedrock_model(model_key: ModelKey, inference_profile_id: str) -> Model:
+    try:
+        base_model = MODEL_REGISTRY[model_key]
+    except KeyError as e:
+        allowed = ", ".join(MODEL_REGISTRY.keys())
+        raise ValueError(f"model_key ({model_key}) must be one of: {allowed}") from e
+
+    if inference_profile_id:
+        return replace(base_model, invoke_id=inference_profile_id)
+    return base_model
+
+
 @dataclass
-class Config:
-    aws_profile: str = ""
-    aws_account_id: str = "382901073838"
-    aws_region: str = "eu-west-2"
-    aws_athena_s3_output_bucket: str = ""
-    aws_athena_catalog: str = "awsdatacatalog"
-    aws_athena_database: str = "default"
-    aws_redshift_cluster_identifier: str = ""
-    aws_redshift_workgroup_name: str = ""
-    aws_redshift_database: str = "dev"
-    aws_redshift_db_user: str = ""
-    aws_redshift_secret_arn: str = ""
+class AwsConfig:
+    account_id: str = "382901073838"
+    profile: str = ""
+    region: str = "eu-west-2"
 
-    bedrock_model_key: ModelKey = "claude-sonnet-4.6"  # callers pass a key
-    bedrock_inference_profile_id: str = ""  # ID or ARN for inference profiles
-    bedrock_model: Model = field(init=False)  # derived, not user-set
 
+@dataclass
+class BedrockConfig:
+    model_key: ModelKey = "claude-sonnet-4.6"
+    inference_profile_id: str = ""
+    model: Model = field(init=False)
     max_tokens: int = 2000
     temperature: float = 0.9
 
     def __post_init__(self):
-        if not self.aws_profile:
-            env_profile = os.getenv(f"SQL_AI_AWS_PROFILE_{self.aws_account_id}")
-            env_profile = env_profile or os.getenv("SQL_AI_DEFAULT_AWS_PROFILE")
-            self.aws_profile = (
-                env_profile
-                or os.getenv("SQL_AI_FAKE_AWS_PROFILE")
-                or find_aws_profile_by_account_id(self.aws_account_id)
-            )
+        self.refresh_model()
 
-        if not self.bedrock_inference_profile_id:
-            env_profile = os.getenv("SQL_AI_BEDROCK_INFERENCE_PROFILE_ID")
-            env_profile = env_profile or os.getenv("SQL_AI_BEDROCK_INFERENCE_PROFILE_ARN")
-            self.bedrock_inference_profile_id = env_profile or ""
+    def refresh_model(self) -> None:
+        self.model = _resolve_bedrock_model(self.model_key, self.inference_profile_id)
 
-        try:
-            base_model = MODEL_REGISTRY[self.bedrock_model_key]
-            if self.bedrock_inference_profile_id:
-                self.bedrock_model = replace(
-                    base_model, invoke_id=self.bedrock_inference_profile_id
-                )
-            else:
-                self.bedrock_model = base_model
-        except KeyError as e:
-            allowed = ", ".join(MODEL_REGISTRY.keys())
-            raise ValueError(
-                f"bedrock_model_key ({self.bedrock_model_key}) must be one of: {allowed}"
-            ) from e
+    def set_model_key(self, model_key: ModelKey) -> None:
+        self.model_key = model_key
+        self.refresh_model()
+
+    def set_inference_profile_id(self, value: str) -> None:
+        self.inference_profile_id = value
+        self.refresh_model()
+
+
+@dataclass
+class AthenaConfig:
+    output_bucket: str = ""
+    catalog: str = "awsdatacatalog"
+    database: str = "default"
+
+
+@dataclass
+class RedshiftConfig:
+    cluster_identifier: str = ""
+    workgroup_name: str = ""
+    database: str = "dev"
+    db_user: str = ""
+    secret_arn: str = ""

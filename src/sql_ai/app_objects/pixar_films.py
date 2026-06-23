@@ -2,7 +2,7 @@
 
 from typing import cast
 
-from sql_ai.config import Config
+from sql_ai.config import AthenaConfig, AwsConfig, BedrockConfig
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_CONTEXT_TEMPLATE,
@@ -37,29 +37,33 @@ class PixarFilmsPrompt(SQLPrompt):
         return custom_guidelines
 
 
-PixarConfig = Config(
-    aws_account_id="688357424058",
-    aws_region="eu-west-2",
-    aws_athena_s3_output_bucket="athena-output-688357424058",
-    aws_profile="personal",
-    bedrock_model_key="claude-sonnet-3.7",
+PixarAwsConfig = AwsConfig(
+    account_id="688357424058",
+    region="eu-west-2",
+    profile="personal",
+)
+
+PixarBedrockConfig = BedrockConfig(
+    model_key="claude-sonnet-3.7",
     max_tokens=2000,
     temperature=0.9,
-    aws_athena_catalog=cast(str, pixar_films_table.catalog),
-    aws_athena_database=pixar_films_table.database,
+)
+
+PixarAthenaConfig = AthenaConfig(
+    output_bucket="athena-output-688357424058",
+    catalog=cast(str, pixar_films_table.catalog),
+    database=pixar_films_table.database,
 )
 
 PixarBackend = AthenaBackend(
-    output_bucket=PixarConfig.aws_athena_s3_output_bucket,
     tables=[pixar_films_table],
-    database=PixarConfig.aws_athena_database,
-    catalog=PixarConfig.aws_athena_catalog,
-    aws_profile=PixarConfig.aws_profile,
-    aws_region=PixarConfig.aws_region,
+    config=PixarAthenaConfig,
+    aws_config=PixarAwsConfig,
 )
 
 PixarLLM = SqlLLM(
     backend=PixarBackend,
     sql_prompt=PixarFilmsPrompt(),
-    config=PixarConfig,
+    aws_config=PixarAwsConfig,
+    bedrock_config=PixarBedrockConfig,
 )

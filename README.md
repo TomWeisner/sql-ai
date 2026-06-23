@@ -1,126 +1,245 @@
 # sql-ai
 
-Repository to generate SQL from natural language, with a Streamlit chatbot front end.
+`sql-ai` turns natural-language questions into SQL, runs the query against a backend such as Athena or Redshift, and can turn the returned data back into a natural-language answer. It ships with a Streamlit chatbot UI and a Python API for wiring your own tables, prompts, and backends.
 
-The repository is designed to be SQL type agnostic, in the sense the core framework does not
-depend on a specific SQL type. Of course, the generated SQL must be of a specific type, and thus
-the code enables different SQL types to be defined as _protocols_, which can then be used by the
-framework.
-
-Currently protocols are defined for:
+Supported SQL backends in this repository today:
 - Athena
 - Redshift
 
-It is possible to add to this repository protocols for other types. Give it a go!
+## Install from TestPyPI
 
-## How to use/update the repo
+This package is currently published to TestPyPI. Install it from TestPyPI, while still allowing normal dependencies to resolve from PyPI:
 
-This project uses Poetry to manage dependencies/venvs/execution.
+```bash
+python -m pip install --upgrade pip
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple sql-ai
+```
 
-1. `sudo apt install python3-poetry`   # If poetry not installed on system
-2. `poetry config virtualenvs.in-project true`  # Create a .venv/ folder inside the project
-3. `poetry init`   # Only if pyproject.toml doesn't exist then initialise poetry
-4. `poetry install`  # Install all dependencies inside pyproject.toml to the .venv/ folder
-5. `poetry run pre-commit install`  # Optional, installs pre-commit hooks
-6. `poetry update`  # Optional, updates all installed packages to latest allowed versions
-7. `poetry lock`  # Optional, update the lock file with new package versions
-8. `source .venv/bin/activate`  # Optional
-9. `poetry self add poetry-plugin-export`  # Installs a plugin needed by `noxfile.py`
-10. Before pushing new code it is recommended to check code is formatted and tests pass. This can be achieved with Nox...
+If you need a specific published build, pin the version explicitly:
 
-`noxfile.py` defines multiple 'sessions' that perform actions such as linting and running tests.
+```bash
+python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple "sql-ai==0.0.1.post<run-number>"
+```
 
-These can be run individually with `nox -s <session>` e.g. `nox -s tests`
+You will typically also need:
+- Python `3.11+`
+- AWS credentials/profile with access to Bedrock and your SQL backend
+- An Athena query-results bucket if you are using Athena
 
-All sessions can be run together with `nox`
+## Use the package from Python
 
-It is recommended to run `nox` successfully before pushing.
+The package is published as `sql-ai`, but in Python you import it as `sql_ai`.
 
-## For analysts (using the app)
-- Launch the UI: `make chatbot` from the repo root.
-- Switch datasets: `make chatbot STREAMLIT_APP=pixar` to launch the Pixar demo instead of the default CEM app.
-- Ask questions: type a natural-language question in the Streamlit input; the app generates SQL, executes it, and shows an answer.
-- Inspect the result: expand the tabs to see the SQL, formatting changes, data, and prompts that drove the answer.
-- Export: use the download button in the “Data” tab to export the result set as CSV.
-- Troubleshoot: if you see an error, check the displayed SQL and formatting logs; retry after adjusting your question.
+If you are importing `sql-ai` into your own project, the core building blocks are:
+- `AwsConfig`
+- `BedrockConfig`
+- `AthenaConfig` or `RedshiftConfig`
+- `Table`
+- a backend such as `AthenaBackend` or `RedshiftBackend`
+- `SqlLLM`
 
-## For engineers (extending or debugging)
-- Run checks: `nox` or individual sessions (e.g., `nox -s lint`, `nox -s tests`).
-- Add datasets: create a new app object in `src/sql_ai/app_objects/` that defines tables, config, and a prompt; wire it into `main.py` if you need CLI selection.
-- Add a dialect: follow “How to add a new SQL dialect” to implement a backend, prompts, and formatting rules.
-- Debug generations: use the Streamlit tabs to inspect prompts/SQL/formatting; check backend errors for the executed SQL.
-- Tests: mirror backend tests (see `tests/athena/`, `tests/redshift/`) when adding engines or changing execution paths.
+Example with Athena:
 
-## How to add a new SQL dialect
-1. Implement the backend: create `src/sql_ai/<dialect>/<dialect>_backend.py` with a `<Dialect>Backend` that satisfies `SqlBackend` (clients, metadata/schemas, execution).
-2. Provide prompts: add context/guidelines (see `sql_backends/athena/prompt_defaults.py`, `sql_backends/redshift/prompt_defaults.py`).
-3. Add formatting: create compliance and style formatters (i.e `src/sql_ai/<dialect>/sql_formatting/<dialect>_compliance.py` and `src/sql_ai/<dialect>/sql_formatting/<dialect>_style_standards_.py`).
-4. Attach them to the backend’s `SQLFormatting` chain, so generated SQL is cleaned for your dialect.
-5. Instantiate and use: pass your backend into `SqlLLM(config=..., backend=...)` (or create an app object that does this).
-6. Test it: mirror the backend tests (e.g. `tests/athena/`, `tests/redshift/`).
+```python
+from sql_ai import (
+    AthenaBackend,
+    AthenaConfig,
+    AwsConfig,
+    BedrockConfig,
+    SqlLLM,
+    Table,
+)
 
-## How to run the chatbot
+table = Table(
+    name="films",
+    description="Pixar films and runtime metadata",
+    catalog="awsdatacatalog",
+    database="pixar",
+)
+
+aws_config = AwsConfig(
+    profile="your-aws-profile",
+    region="eu-west-2",
+)
+
+bedrock_config = BedrockConfig(
+    model_key="claude-sonnet-4.6",
+)
+
+athena_config = AthenaConfig(
+    output_bucket="your-athena-query-results-bucket",
+    catalog=table.catalog,
+    database=table.database,
+)
+
+backend = AthenaBackend(
+    tables=[table],
+    config=athena_config,
+    aws_config=aws_config,
+)
+
+llm = SqlLLM(
+    backend=backend,
+    aws_config=aws_config,
+    bedrock_config=bedrock_config,
+)
+
+question = "What is the average runtime of Pixar films by decade?"
+sql_result = llm.get_sql(question)
+print(sql_result.sql)
+
+df = llm.run_query(sql_result.sql)
+answer, _ = llm.question_about_data(question, df)
+print(answer)
+```
+
+If you want to launch the packaged Streamlit chatbot UI instead of wiring it up in Python, run one of the bundled demo apps:
+
+```bash
+python -m sql_ai.main --ui streamlit --app cem
+python -m sql_ai.main --ui streamlit --app pixar
+```
+
+### Using the Streamlit UI with your own objects
+
+```python
+from sql_ai.streamlit.app import ChatbotApp
+
+app = ChatbotApp(
+    athena_llm=llm,
+    title="Orders analytics",
+    default_question="How many orders did we receive last week?",
+)
+app.run()
+```
+
+Save the above as something like `my_chatbot.py`, then launch it with Streamlit:
+
+```bash
+streamlit run my_chatbot.py
+```
+
+Useful behavior to know up front:
+- `SqlLLM.get_sql(...)` populates schemas, prompts Bedrock, and retries if SQL formatting/validation fails
+- `SqlLLM.run_query(...)` only allows `SELECT` queries (or CTEs starting with `WITH`)
+- `SqlLLM.question_about_data(...)` asks Bedrock to answer using the returned dataframe
+- runtime config is explicit: pass AWS and Bedrock settings via `AwsConfig(...)` and `BedrockConfig(...)` rather than relying on environment-variable fallbacks
+- if you want to change a `BedrockConfig` after construction, use `set_model_key(...)` or `set_inference_profile_id(...)` so the derived `model` stays in sync
+
+## See the available command-line options
+
+```bash
+python -m sql_ai.main --help
+```
+
+At the time of writing, that shows these top-level options:
+- `--app {cem,pixar}` to select one of the bundled demo apps
+- `--ui {streamlit,cli}` to choose the web UI or terminal mode
+- `--engine ENGINE` for the SQL engine key (`athena`, `redshift`); the CLI help currently notes that it is ignored if `--app` is provided
+
+## Developer notes
+
+Everything below is for people hacking on the repository itself rather than simply installing the package.
+
+### Clone the repository and install dev tooling
+
+This project uses Poetry to manage dependencies and virtual environments.
+
+```bash
+git clone https://github.com/TomWeisner/sql-ai.git
+cd sql-ai
+poetry config virtualenvs.in-project true
+poetry install
+poetry self add poetry-plugin-export
+poetry run pre-commit install
+```
+
+Optional helpers:
+- `poetry update` to refresh installed packages
+- `poetry lock` to regenerate the lock file after dependency changes
+- `source .venv/bin/activate` if you want the virtualenv activated in your shell
+
+### Run the app from a repo checkout
 
 From the repo root:
 
-`make chatbot`
+```bash
+make chatbot
+make chatbot STREAMLIT_APP=pixar
+```
 
-To run the Pixar example instead of the default CEM app:
+The first command launches the default CEM app; the second switches to the Pixar demo.
 
-`make chatbot STREAMLIT_APP=pixar`
+### Run checks before pushing
 
+`noxfile.py` defines sessions for formatting, linting, typing, and tests.
+
+Run everything:
+
+```bash
+nox
+```
+
+### Extending or debugging
+
+- Add datasets by creating a new app object in `src/sql_ai/app_objects/` that defines tables, explicit config objects, and a prompt.
+- Wire new app choices into `src/sql_ai/main.py` if you want CLI selection.
+- Add a dialect by following the next section and mirroring tests under `tests/athena/` or `tests/redshift/`.
+- Debug generations from the Streamlit tabs by inspecting prompts, SQL, formatting logs, and backend execution errors.
+
+### How to add a new SQL dialect
+
+1. Implement the backend in `src/sql_ai/sql_backends/<dialect>/<dialect>_backend.py` with a `<Dialect>Backend` that satisfies `SqlBackend`.
+2. Provide prompt context and guidelines, following examples in `src/sql_ai/sql_backends/athena/prompt_defaults.py` and `src/sql_ai/sql_backends/redshift/prompt_defaults.py`.
+3. Add compliance and style formatters in `src/sql_ai/sql_backends/<dialect>/sql_formatting/`.
+4. Attach those formatters to the backend’s `SQLFormatting` chain.
+5. Instantiate your backend via `SqlLLM(backend=..., aws_config=..., bedrock_config=...)` or through a new app object.
+6. Mirror the backend tests to cover schema loading, formatting, and execution.
 
 ## Architecture overview
 
-When `streamlit/entrypoint.py` runs it wires together a few layers:
+When `src/sql_ai/streamlit/entrypoint.py` runs, it wires together a few layers:
 
-App objects: `src/sql_ai/app_objects/...`
-- tables: define which tables (with associated catalog/database/name/description/schema) are exposed
-- config: bundle environment choices (AWS account/profile/region, Bedrock model, backend connection details)
-- prompt: customise the `SQLPrompt` for the dataset
-- llm: export a ready-to-use `SqlLLM` for the UI
+### App objects: `src/sql_ai/app_objects/...`
 
-Backend selection: `SqlBackend` protocol
-- engines: pick an engine (Athena/Redshift) while keeping orchestration agnostic
-- metadata: surface backend-provided schemas and system tables before prompting
+- define the tables exposed to the LLM
+- bundle config such as AWS account/profile/region and Bedrock model
+- customise the `SQLPrompt` for a dataset
+- export a ready-to-use `SqlLLM`
 
-SqlLLM: `src/sql_ai/sql_llm.py`
-- schemas: populate table schemas before prompting
-- prompting: build prompts and call Bedrock
-- formatting: run SQL through dialect/style fixers
-- execution: run the query via the selected backend
-- answers: ask Bedrock to respond using the returned data
+### Backend selection: `SqlBackend`
 
-SQL formatting: `src/sql_ai/sql_formatting/`
-- compliance: apply dialect-specific fixes
-- style: enforce spacing/JOIN/style conventions
-- logging: record every change so the UI can show the history
+- keeps orchestration backend-agnostic
+- exposes schemas and metadata tables before prompting
+- executes the final query against Athena or Redshift
 
-Dialect backends: `src/sql_ai/sql_backends/athena/`, `src/sql_ai/sql_backends/redshift/`
-- clients: handle engine clients and connections
-- metadata: fetch schemas and metadata tables
-- execution: submit queries and stream results
-- prompts: supply dialect defaults for prompt building
-- formatting: provide dialect-specific rules used by `SQLFormatting`
+### `SqlLLM`: `src/sql_ai/sql_llm.py`
 
-Step tracking: `src/sql_ai/tracking/`
-- wrapping: decorate major phases with emoji-labelled progress messages
-- UI: feed those steps into the Streamlit sidebar
+- populates table schemas before prompting
+- builds prompts and calls Bedrock
+- runs SQL through dialect/style formatters
+- executes the query via the selected backend
+- asks Bedrock to answer using the returned data
 
-If any phase fails (formatting error, backend validation, etc.), `SqlLLM` retries with the formatter’s feedback until a valid query is produced or the retry limit is hit. Once the SQL succeeds, the data is fed back into Bedrock to craft the final answer shown in the UI.
+### SQL formatting: `src/sql_ai/sql_formatting/`
+
+- applies dialect-specific compliance fixes
+- enforces SQL style conventions
+- records each formatting change so the UI can show the history
+
+### Step tracking: `src/sql_ai/tracking/`
+
+- decorates major phases with emoji-labelled progress messages
+- feeds those steps into the Streamlit sidebar
+
+If any phase fails, `SqlLLM` retries with formatter feedback until a valid query is produced or the retry limit is hit. Once the SQL succeeds, the data is fed back into Bedrock to craft the final answer shown in the UI.
 
 ### Architecture flow
 
-```mermaid
-A - User question via Streamlit UI
-B - Declare tables: Table(name="demo", database="db", catalog="cat", description="Mock table")
-C - Init backend: AthenaBackend(output_bucket="s3://bucket", ...)
-D - Populate schemas: backend.populate_schemas()
-E - Build SQL prompt: sql_prompt.build_prompt_body_for_sql(question, tables)
-F - Generate SQL: SqlLLM.generate_sql(question) -> Bedrock
-G - Raw SQL text from Bedrock
-H - Format/validate SQL: backend.format_query(sql)
-I - Execute query: backend.run_query(formatted_sql) -> DataFrame
-J - Answer from data: SqlLLM.question_about_data(question, df) -> Bedrock
-K - UI shows steps / SQL / logs / data / answer
-```
+1. The user asks a question in the UI or CLI.
+2. The selected backend populates table schemas.
+3. `SQLPrompt` builds the SQL-generation prompt.
+4. Bedrock generates SQL.
+5. The backend formats and validates that SQL.
+6. The backend executes the query and returns a dataframe.
+7. Bedrock answers the original question using the dataframe.

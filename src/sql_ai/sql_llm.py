@@ -8,7 +8,7 @@ import pandas as pd
 from botocore.client import BaseClient
 
 from sql_ai.bedrock.bedrock_service import BedrockService, PromptBody
-from sql_ai.config import Config
+from sql_ai.config import AwsConfig, BedrockConfig
 from sql_ai.sql_backends import SqlBackend, Table
 from sql_ai.sql_prompting.prompting import SQLPrompt
 from sql_ai.tracking.decorator import track_step_and_log
@@ -25,14 +25,23 @@ class SQLResult:
 class SqlLLM:
     def __init__(
         self,
-        config: Config,
-        backend: SqlBackend,
+        backend: Optional[SqlBackend] = None,
+        *,
+        bedrock_config: Optional[BedrockConfig] = None,
+        aws_config: Optional[AwsConfig] = None,
         sql_prompt: Optional[SQLPrompt] = None,
         bedrock_runtime_client: Optional[BaseClient] = None,
         session: Optional[boto3.Session] = None,
         logger: Optional[logging.Logger] = None,
     ):
-        self.config = config
+        if backend is None:
+            raise ValueError("backend is required")
+
+        if aws_config is None or bedrock_config is None:
+            raise ValueError("`SqlLLM` requires both `aws_config` and `bedrock_config`.")
+
+        self.aws_config = aws_config
+        self.bedrock_config = bedrock_config
         self.backend = backend
         self.tables: list[Table] = backend.tables
         if sql_prompt:
@@ -44,12 +53,16 @@ class SqlLLM:
             )
         self.sql_prompt.general_context_template = backend.prompt_context_template
         self.sql_prompt.general_guidelines_text = backend.prompt_guidelines
-        self.sql_prompt.model = config.bedrock_model
+        self.sql_prompt.model = self.bedrock_config.model
         self.max_sql_generation_retries = 3
 
-        session = session or boto3.Session(profile_name=config.aws_profile)
+        if session is None:
+            if self.aws_config.profile:
+                session = boto3.Session(profile_name=self.aws_config.profile)
+            else:
+                session = boto3.Session()
         bedrock_runtime_client = bedrock_runtime_client or session.client(
-            "bedrock-runtime", region_name=config.aws_region
+            "bedrock-runtime", region_name=self.aws_config.region
         )
 
         self.bedrock = BedrockService(bedrock_runtime_client)
@@ -102,7 +115,7 @@ class SqlLLM:
         body: PromptBody = self.sql_prompt.build_prompt_body_for_sql(
             user_question=user_question, tables=self.tables
         )
-        sql: str = self.bedrock.call(body=body, model=self.config.bedrock_model)
+        sql: str = self.bedrock.call(body=body, model=self.bedrock_config.model)
         return sql, body
 
     def question_about_data(
@@ -111,7 +124,7 @@ class SqlLLM:
         body: PromptBody = self.sql_prompt.build_prompt_body_from_data(
             user_question=input, data=data
         )
-        answer: str = self.bedrock.call(body=body, model=self.config.bedrock_model)
+        answer: str = self.bedrock.call(body=body, model=self.bedrock_config.model)
         return answer, body
 
     def run_query(self, query: str) -> pd.DataFrame:

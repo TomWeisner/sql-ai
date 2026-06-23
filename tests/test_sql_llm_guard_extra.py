@@ -4,15 +4,16 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from sql_ai.config import Config
+from sql_ai.config import AwsConfig, BedrockConfig
 from sql_ai.sql_llm import SqlLLM
 from tests.conftest import DummyBackend
 
 
 def _make_llm(backend: DummyBackend) -> SqlLLM:
     return SqlLLM(
-        config=Config(aws_profile="test-profile"),
         backend=backend,
+        aws_config=AwsConfig(profile="test-profile"),
+        bedrock_config=BedrockConfig(),
         session=MagicMock(),
         bedrock_runtime_client=MagicMock(),
     )

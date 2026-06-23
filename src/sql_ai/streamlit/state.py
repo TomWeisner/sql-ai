@@ -35,7 +35,7 @@ def init_session_state(default_question: str, llm: SqlLLM) -> None:
         "dry_run": True,
         "interpret_with_llm": True,
         "show_tabs": True,
-        "model_key": llm.config.bedrock_model_key,
+        "model_key": llm.bedrock_config.model_key,
         "selected_table_ids": [],
         "tables_selection_initialized": False,
     }

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
+from sql_ai.config import AthenaConfig, AwsConfig
 from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_CONTEXT_TEMPLATE,
     ATHENA_GUIDELINES,
@@ -35,7 +36,7 @@ class AthenaBackend(SqlBackend):
 
     def __init__(
         self,
-        output_bucket: str,
+        output_bucket: str = "",
         tables: Optional[Sequence[Table]] = None,
         client: Optional[AthenaClient] = None,
         database: str = "default",
@@ -43,16 +44,41 @@ class AthenaBackend(SqlBackend):
         aws_profile: str = "",
         aws_region: str = "eu-west-2",
         wait_poll_interval: float = 1.0,
+        config: Optional[AthenaConfig] = None,
+        aws_config: Optional[AwsConfig] = None,
     ):
+        config = config or AthenaConfig(
+            output_bucket=output_bucket,
+            database=database,
+            catalog=catalog,
+        )
+        if not config.output_bucket:
+            raise ValueError(
+                "AthenaConfig.output_bucket must be set to an S3 bucket "
+                "for Athena query results."
+            )
+        aws_config = aws_config or AwsConfig(
+            profile=aws_profile,
+            region=aws_region,
+        )
+
         if client is None:
-            session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
+            if aws_config.profile:
+                session = boto3.Session(
+                    profile_name=aws_config.profile,
+                    region_name=aws_config.region,
+                )
+            else:
+                session = boto3.Session(region_name=aws_config.region)
             client = session.client("athena")
 
         self.client: AthenaClient = client  # type: ignore[assignment]
-        self.output_bucket = output_bucket
+        self.config = config
+        self.aws_config = aws_config
+        self.output_bucket = config.output_bucket
         self.tables: list[Table] = list(tables) if tables else []
-        self.database = database
-        self.catalog = catalog
+        self.database = config.database
+        self.catalog = config.catalog
         self.wait_poll_interval = wait_poll_interval
         self.sql_formatter = SQLFormatting(
             [

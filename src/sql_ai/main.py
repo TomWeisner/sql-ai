@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 from typing import Sequence
 
-from sql_ai.config import Config
+from sql_ai.config import AthenaConfig, AwsConfig, BedrockConfig, RedshiftConfig
 from sql_ai.sql_backends import SqlBackend, Table
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.redshift.redshift_backend import RedshiftBackend
@@ -29,28 +29,22 @@ from sql_ai.sql_llm import SqlLLM
 def build_backend(
     engine: str,
     tables: Sequence[Table],
-    config: Config,
+    aws_config: AwsConfig,
+    athena_config: AthenaConfig,
+    redshift_config: RedshiftConfig,
 ) -> SqlBackend:
     engine = engine.lower()
     if engine == "athena":
         return AthenaBackend(
-            output_bucket=config.aws_athena_s3_output_bucket,
             tables=tables,
-            database=config.aws_athena_database,
-            catalog=config.aws_athena_catalog,
-            aws_profile=config.aws_profile,
-            aws_region=config.aws_region,
+            config=athena_config,
+            aws_config=aws_config,
         )
     if engine == "redshift":
         return RedshiftBackend(
             tables=tables,
-            database=config.aws_redshift_database,
-            cluster_identifier=config.aws_redshift_cluster_identifier,
-            workgroup_name=config.aws_redshift_workgroup_name,
-            db_user=config.aws_redshift_db_user,
-            secret_arn=config.aws_redshift_secret_arn,
-            aws_profile=config.aws_profile,
-            aws_region=config.aws_region,
+            config=redshift_config,
+            aws_config=aws_config,
         )
 
     raise ValueError("Supported engines: athena, redshift.")
@@ -70,11 +64,10 @@ def load_demo_llm(app_key: str) -> tuple[SqlLLM, list[Table]]:
 
 
 def run_streamlit_app(app_key: str):
-    os.environ["SQL_AI_STREAMLIT_APP"] = app_key
     from streamlit.web import bootstrap  # lazy import
 
-    app_path = Path(__file__).resolve().parent / "streamlit" / "app.py"
-    bootstrap.run(str(app_path), False, [], {})
+    app_path = Path(__file__).resolve().parent / "streamlit" / "entrypoint.py"
+    bootstrap.run(str(app_path), False, [app_key], {})
 
 
 def main():
@@ -115,16 +108,30 @@ def main():
 
     if app_choice:
         llm, tables = load_demo_llm(app_choice)
-        config = llm.config
+        aws_config = llm.aws_config
+        bedrock_config = llm.bedrock_config
     else:
-        config = Config()
-        backend = build_backend(engine=args.engine, tables=tables, config=config)
-        llm = SqlLLM(config=config, backend=backend)
+        aws_config = AwsConfig()
+        bedrock_config = BedrockConfig()
+        athena_config = AthenaConfig()
+        redshift_config = RedshiftConfig()
+        backend = build_backend(
+            engine=args.engine,
+            tables=tables,
+            aws_config=aws_config,
+            athena_config=athena_config,
+            redshift_config=redshift_config,
+        )
+        llm = SqlLLM(
+            backend=backend,
+            aws_config=aws_config,
+            bedrock_config=bedrock_config,
+        )
 
     print(
-        f"AWS account={config.aws_account_id}\n"
-        f"Profile={config.aws_profile or '<auto>'}\n"
-        f"Region={config.aws_region}"
+        f"AWS account={aws_config.account_id}\n"
+        f"Profile={aws_config.profile or '<not provided>'}\n"
+        f"Region={aws_config.region}"
     )
 
     if tables:

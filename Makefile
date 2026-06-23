@@ -51,4 +51,4 @@ precommit:
 	$(POETRY) run pre-commit run --all-files
 
 chatbot:
-	SQL_AI_STREAMLIT_APP=$(STREAMLIT_APP) $(POETRY) run streamlit run src/sql_ai/streamlit/entrypoint.py
+	$(POETRY) run streamlit run src/sql_ai/streamlit/entrypoint.py -- $(STREAMLIT_APP)

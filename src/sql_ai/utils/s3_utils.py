@@ -58,7 +58,13 @@ def ensure_bucket_exists(s3, bucket_name, region="eu-west-2"):
             raise  # Some other error
 
 
-def upload_file_to_s3(s3, bucket_name, subfolders, file_path, object_key):
+def upload_file_to_s3(
+    s3,
+    bucket_name: str,
+    subfolders: Optional[str],
+    file_path: str,
+    object_key: str,
+):
     """
     Uploads a file to a specified subfolder in an S3 bucket.
 
@@ -75,11 +81,14 @@ def upload_file_to_s3(s3, bucket_name, subfolders, file_path, object_key):
     - Prints an error message if the upload fails.
     """
     if subfolders:
+        cleaned_subfolders = subfolders.rstrip("/")
         s3_location = f"s3://{bucket_name}/{subfolders}/{object_key}"
+        upload_key = f"{cleaned_subfolders}/{object_key}"
     else:
         s3_location = f"s3://{bucket_name}/{object_key}"
+        upload_key = object_key
     try:
-        s3.upload_file(file_path, bucket_name, f"{subfolders.rstrip('/')}/{object_key}")
+        s3.upload_file(file_path, bucket_name, upload_key)
         print(f"Uploaded {object_key} to {s3_location}")
     except Exception as e:
         print(f"Failed to upload '{file_path}' to {s3_location}: {e}")

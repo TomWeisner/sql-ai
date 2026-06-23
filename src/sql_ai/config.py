@@ -17,9 +17,8 @@ def _resolve_bedrock_model(model_key: ModelKey, inference_profile_id: str) -> Mo
     try:
         base_model = MODEL_REGISTRY[model_key]
     except KeyError as e:
-        raise ValueError(
-            f"model_key ({model_key}) must be one of: {allowed}"
-        ) from e
+        allowed = ", ".join(MODEL_REGISTRY.keys())
+        raise ValueError(f"model_key ({model_key}) must be one of: {allowed}") from e
 
     if inference_profile_id:
         return replace(base_model, invoke_id=inference_profile_id)

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
+from sql_ai.config import AwsConfig
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.table import Table
 
@@ -123,3 +124,17 @@ def test_run_query_no_results(athena_backend, mock_athena_client):
     # Assert the result
     assert isinstance(result, pd.DataFrame)
     assert result.empty
+
+
+def test_backend_omits_blank_profile_when_building_session(monkeypatch):
+    session_mock = MagicMock()
+    session_mock.client.return_value = MagicMock(name="AthenaClient")
+    session_factory = MagicMock(return_value=session_mock)
+    monkeypatch.setattr(
+        "sql_ai.sql_backends.athena.athena_backend.boto3.Session",
+        session_factory,
+    )
+
+    AthenaBackend(output_bucket="test-bucket", aws_config=AwsConfig(profile=""))
+
+    session_factory.assert_called_once_with(region_name="eu-west-2")

@@ -190,7 +190,7 @@ def handle_question_actual(
         duration_s = (datetime.now() - start_time).total_seconds()
         is_auth_error = is_aws_auth_error(exc)
         error_message = (
-            build_aws_login_message(llm.config.aws_profile, exc)
+            build_aws_login_message(llm.aws_config.profile, exc)
             if is_auth_error
             else (
                 error_details.get("message")
@@ -272,7 +272,7 @@ def execute_saved_sql(
         error_details = display_enhanced_traceback(exc)
         is_auth_error = is_aws_auth_error(exc)
         error_message = (
-            build_aws_login_message(llm.config.aws_profile, exc)
+            build_aws_login_message(llm.aws_config.profile, exc)
             if is_auth_error
             else (
                 error_details.get("message")
@@ -333,7 +333,7 @@ def interpret_saved_result(llm: SqlLLM, idx: int, run: dict) -> None:
         error_details = display_enhanced_traceback(exc)
         is_auth_error = is_aws_auth_error(exc)
         error_message = (
-            build_aws_login_message(llm.config.aws_profile, exc)
+            build_aws_login_message(llm.aws_config.profile, exc)
             if is_auth_error
             else (
                 error_details.get("message")

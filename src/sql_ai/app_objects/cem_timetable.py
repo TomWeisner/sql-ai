@@ -1,6 +1,6 @@
 from typing import cast
 
-from sql_ai.config import Config
+from sql_ai.config import AthenaConfig, AwsConfig, BedrockConfig
 from sql_ai.sql_backends.athena.athena_backend import AthenaBackend
 from sql_ai.sql_backends.athena.prompt_defaults import (
     ATHENA_CONTEXT_TEMPLATE,
@@ -68,29 +68,33 @@ class CEMPrompt(SQLPrompt):
         return custom_guidelines
 
 
-CEMConfig = Config(
-    aws_account_id="382901073838",
-    aws_region="eu-west-2",
-    aws_athena_s3_output_bucket="aws-athena-query-results-eu-west-2-382901073838",
-    aws_profile="playground",
-    bedrock_model_key="claude-sonnet-4.6",
+CEMAwsConfig = AwsConfig(
+    account_id="382901073838",
+    region="eu-west-2",
+    profile="playground",
+)
+
+CEMBedrockConfig = BedrockConfig(
+    model_key="claude-sonnet-4.6",
     max_tokens=2000,
     temperature=0.9,
-    aws_athena_catalog=cast(str, cem_timetable_table.catalog),
-    aws_athena_database=cem_timetable_table.database,
+)
+
+CEMAthenaConfig = AthenaConfig(
+    output_bucket="aws-athena-query-results-eu-west-2-382901073838",
+    catalog=cast(str, cem_timetable_table.catalog),
+    database=cem_timetable_table.database,
 )
 
 CEMBackend = AthenaBackend(
-    output_bucket=CEMConfig.aws_athena_s3_output_bucket,
     tables=[cem_timetable_table],
-    database=CEMConfig.aws_athena_database,
-    catalog=CEMConfig.aws_athena_catalog,
-    aws_profile=CEMConfig.aws_profile,
-    aws_region=CEMConfig.aws_region,
+    config=CEMAthenaConfig,
+    aws_config=CEMAwsConfig,
 )
 
 CEMLLM = SqlLLM(
     backend=CEMBackend,
     sql_prompt=CEMPrompt(),
-    config=CEMConfig,
+    aws_config=CEMAwsConfig,
+    bedrock_config=CEMBedrockConfig,
 )

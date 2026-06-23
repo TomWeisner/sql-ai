@@ -3,10 +3,7 @@ from typing import Optional
 import boto3
 import botocore
 
-from sql_ai.utils.utils import (
-    find_aws_profile_by_account_id,
-    get_all_files_in_directory,
-)
+from sql_ai.utils.utils import get_all_files_in_directory
 
 
 def print_bucket_size(s3, bucket_name: str):
@@ -91,11 +88,12 @@ def upload_file_to_s3(s3, bucket_name, subfolders, file_path, object_key):
 def load_files_to_s3(
     bucket_name: str,
     file_directory: str,
+    aws_profile: str = "",
     bucket_subfolder: Optional[str] = None,
     file_type: str = ".html",
     should_list_size_of_files_in_bucket: bool = True,
-    bucket_region="eu-west-2",
-    max_minutes_ago_to_save=None,
+    bucket_region: str = "eu-west-2",
+    max_minutes_ago_to_save: Optional[int] = None,
 ):
     """
     Load and upload files from a local directory to an S3 bucket.
@@ -109,7 +107,10 @@ def load_files_to_s3(
     files processed and confirmation of each successful upload.
     """
 
-    session = boto3.Session(profile_name=find_aws_profile_by_account_id("382901073838"))
+    if aws_profile:
+        session = boto3.Session(profile_name=aws_profile)
+    else:
+        session = boto3.Session()
     s3 = session.client("s3", bucket_region)
 
     ensure_bucket_exists(s3, bucket_name, region=bucket_region)

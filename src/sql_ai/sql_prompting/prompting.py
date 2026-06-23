@@ -69,5 +69,5 @@ class SQLPrompt(ABC):
 
     def _require_model(self) -> Model:
         if self.model is None:
-            raise ValueError("SQLPrompt.model has not been set from Config.")
+            raise ValueError("SQLPrompt.model has not been set from BedrockConfig.")
         return self.model

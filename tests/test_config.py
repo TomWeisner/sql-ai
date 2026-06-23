@@ -1,88 +1,89 @@
-"""Tests for Config defaults, resolution, and validation."""
+"""Tests for explicit config defaults and validation."""
 
 import pytest
 
-from sql_ai.config import Config
+from sql_ai.config import AthenaConfig, AwsConfig, BedrockConfig, RedshiftConfig
 
 
-@pytest.fixture
-def default_config(monkeypatch):
-    monkeypatch.setenv("SQL_AI_FAKE_AWS_PROFILE", "playground")
-    return Config()
+def test_default_aws_config():
+    config = AwsConfig()
+
+    assert config.account_id == "382901073838"
+    assert config.profile == ""
+    assert config.region == "eu-west-2"
 
 
-@pytest.fixture
-def custom_config():
-    return Config(
-        aws_account_id="123456789012",
-        aws_profile="custom-profile",
-        aws_region="us-east-1",
-        aws_athena_s3_output_bucket="my-bucket",
-        aws_athena_catalog="my-catalog",
-        aws_athena_database="my-database",
-        bedrock_model_key="claude-sonnet-4.5",
+def test_bedrock_config_defaults():
+    config = BedrockConfig()
+
+    assert config.model_key == "claude-sonnet-4.6"
+    assert config.model.name == "Claude Sonnet 4.6"
+    assert config.inference_profile_id == ""
+    assert config.max_tokens == 2000
+    assert config.temperature == 0.9
+
+
+def test_explicit_backend_configs_preserve_values():
+    assert AthenaConfig(
+        output_bucket="my-bucket",
+        catalog="my-catalog",
+        database="my-database",
+    ) == AthenaConfig(
+        output_bucket="my-bucket",
+        catalog="my-catalog",
+        database="my-database",
+    )
+    assert RedshiftConfig(
+        cluster_identifier="cluster-1",
+        workgroup_name="wg-1",
+        database="analytics",
+        db_user="reporting_user",
+        secret_arn="arn:aws:secretsmanager:eu-west-2:123456789012:secret:demo",
+    ) == RedshiftConfig(
+        cluster_identifier="cluster-1",
+        workgroup_name="wg-1",
+        database="analytics",
+        db_user="reporting_user",
+        secret_arn="arn:aws:secretsmanager:eu-west-2:123456789012:secret:demo",
+    )
+
+
+def test_custom_bedrock_config_preserves_runtime_settings():
+    config = BedrockConfig(
+        model_key="claude-sonnet-4.5",
         max_tokens=1000,
         temperature=0.5,
     )
 
-
-def test_default_config(default_config):
-    assert default_config.aws_account_id == "382901073838"
-    assert default_config.aws_profile == "playground"
-    assert default_config.aws_region == "eu-west-2"
-    assert default_config.aws_athena_s3_output_bucket == ""
-    assert default_config.aws_athena_catalog == "awsdatacatalog"
-    assert default_config.aws_athena_database == "default"
-    assert default_config.bedrock_model.name == "Claude Sonnet 4.6"
-    assert default_config.max_tokens == 2000
-    assert default_config.temperature == 0.9
+    assert config.model.name == "Claude Sonnet 4.5"
+    assert config.max_tokens == 1000
+    assert config.temperature == 0.5
 
 
-def test_custom_config(custom_config):
-    assert custom_config.aws_account_id == "123456789012"
-    assert custom_config.aws_profile == "custom-profile"
-    assert custom_config.aws_region == "us-east-1"
-    assert custom_config.aws_athena_s3_output_bucket == "my-bucket"
-    assert custom_config.aws_athena_catalog == "my-catalog"
-    assert custom_config.aws_athena_database == "my-database"
-    assert custom_config.bedrock_model.name == "Claude Sonnet 4.5"
-    assert custom_config.max_tokens == 1000
-    assert custom_config.temperature == 0.5
+def test_bedrock_config_set_model_key_refreshes_model():
+    config = BedrockConfig(model_key="claude-sonnet-4.6")
+
+    config.set_model_key("claude-sonnet-3.0")
+
+    assert config.model_key == "claude-sonnet-3.0"
+    assert config.model.name == "Claude Sonnet 3"
 
 
-@pytest.mark.parametrize(
-    "aws_account_id, expected_profile",
-    [
-        ("123456789012", "resolved-profile"),
-        ("987654321098", "another-profile"),
-    ],
-)
-def test_aws_profile_resolution(monkeypatch, aws_account_id, expected_profile):
-    """
-    Test the resolution of AWS profiles based on account ID.
+def test_bedrock_config_set_inference_profile_id_refreshes_model():
+    config = BedrockConfig(model_key="claude-sonnet-4.6")
 
-    This test uses parameterization to check if the `aws_profile` is correctly
-    resolved for different `aws_account_id` inputs using a mock of the
-    `find_aws_profile_by_account_id` function.
+    config.set_inference_profile_id("profile-arn")
 
-    Args:
-        mocker: A pytest mocker object used to mock the function call.
-        aws_account_id: The AWS account ID to test with.
-        expected_profile: The expected AWS profile to be resolved.
-    """
+    assert config.inference_profile_id == "profile-arn"
+    assert config.model.invoke_model_id == "profile-arn"
 
-    monkeypatch.setenv("SQL_AI_FAKE_AWS_PROFILE", "")  # ensure no env override
-    monkeypatch.setattr(
-        "sql_ai.config.find_aws_profile_by_account_id",
-        lambda _account_id: expected_profile,
-    )
-    config = Config(aws_account_id=aws_account_id)
-    assert config.aws_profile == expected_profile
+
+def test_aws_config_preserves_explicit_profile():
+    config = AwsConfig(account_id="123456789012", profile="explicit-profile")
+
+    assert config.profile == "explicit-profile"
 
 
 def test_invalid_bedrock_model():
-    """
-    Test that an invalid Bedrock model key raises a ValueError.
-    """
     with pytest.raises(ValueError):
-        Config(aws_profile="test", bedrock_model_key="invalid-model")
+        BedrockConfig(model_key="invalid-model")

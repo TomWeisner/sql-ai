@@ -37,7 +37,7 @@ def render_tables_panel(
                     st.session_state.pop("aws_auth_notice", None)
                 except Exception as e:
                     if is_aws_auth_error(e):
-                        auth_message = build_aws_login_message(llm.config.aws_profile, e)
+                        auth_message = build_aws_login_message(llm.aws_config.profile, e)
                         st.session_state["aws_auth_notice"] = auth_message
                         st.warning(auth_message)
                     else:

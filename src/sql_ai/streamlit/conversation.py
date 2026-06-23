@@ -63,7 +63,7 @@ def render_conversation(
                 )
                 st.session_state["suppress_sidebar_typewriter"] = False
                 try:
-                    model_name = llm.config.bedrock_model.name
+                    model_name = llm.bedrock_config.model.name
                     with st.spinner(f"_Generating answer... ({model_name})_"):
                         with track_step_and_log_cm("Processing user input"):
                             result = handle_question_actual(

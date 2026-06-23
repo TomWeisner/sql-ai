@@ -4,10 +4,7 @@ from dataclasses import dataclass, field
 from functools import wraps
 from typing import Optional
 
-import boto3
 import yaml
-from botocore.exceptions import ClientError
-from botocore.session import Session
 
 
 def read_from_yaml(file_path) -> dict:
@@ -56,27 +53,6 @@ def get_all_files_in_directory(
     # Sort alphabetically by filename
     files.sort(key=lambda x: x[1])
     return files
-
-
-# Search AWS profiles for matching account
-def find_aws_profile_by_account_id(target_account_id: str = "688357424058") -> str:
-    print(
-        "Searching AWS profiles for account ID:",
-        target_account_id,
-        Session().available_profiles,
-    )
-    for profile in Session().available_profiles:
-        print(f"Checking AWS profile: {profile}")
-        session = boto3.Session(profile_name=profile)
-        try:
-            sts = session.client("sts")
-            identity = sts.get_caller_identity()
-            if identity["Account"] == target_account_id:
-                return profile
-        except ClientError:
-            continue  # Skip invalid/misconfigured profiles
-
-    raise ValueError(f"No AWS profile found for account ID {target_account_id}")
 
 
 @dataclass

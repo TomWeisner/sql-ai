@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Sequence
 import boto3
 import pandas as pd
 
+from sql_ai.config import AwsConfig, RedshiftConfig
 from sql_ai.sql_backends.base import SqlBackend
 from sql_ai.sql_backends.redshift.prompt_defaults import (
     REDSHIFT_CONTEXT_TEMPLATE,
@@ -49,18 +50,40 @@ class RedshiftBackend(SqlBackend):
         aws_profile: str = "",
         aws_region: str = "eu-west-2",
         wait_poll_interval: float = 1.0,
+        config: Optional[RedshiftConfig] = None,
+        aws_config: Optional[AwsConfig] = None,
     ):
+        config = config or RedshiftConfig(
+            database=database,
+            cluster_identifier=cluster_identifier,
+            workgroup_name=workgroup_name,
+            db_user=db_user,
+            secret_arn=secret_arn,
+        )
+        aws_config = aws_config or AwsConfig(
+            profile=aws_profile,
+            region=aws_region,
+        )
+
         if client is None:
-            session = boto3.Session(profile_name=aws_profile, region_name=aws_region)
+            if aws_config.profile:
+                session = boto3.Session(
+                    profile_name=aws_config.profile,
+                    region_name=aws_config.region,
+                )
+            else:
+                session = boto3.Session(region_name=aws_config.region)
             client = session.client("redshift-data")
 
         self.client: RedshiftDataAPIServiceClient = client  # type: ignore[assignment]
+        self.config = config
+        self.aws_config = aws_config
         self.tables: list[Table] = list(tables) if tables else []
-        self.database = database
-        self.cluster_identifier = cluster_identifier
-        self.workgroup_name = workgroup_name
-        self.db_user = db_user
-        self.secret_arn = secret_arn
+        self.database = config.database
+        self.cluster_identifier = config.cluster_identifier
+        self.workgroup_name = config.workgroup_name
+        self.db_user = config.db_user
+        self.secret_arn = config.secret_arn
         self.wait_poll_interval = wait_poll_interval
         self.sql_formatter = SQLFormatting(
             [
